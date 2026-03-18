@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Recording, UploadStatus } from "@/lib/types";
+import type { LocalQCReport } from "@/lib/qc-types";
 
 interface RecordingsContextValue {
   recordings: Recording[];
   addRecording: (recording: Recording) => void;
   removeRecording: (id: string) => void;
   updateUploadStatus: (id: string, status: UploadStatus, submissionId?: string) => void;
+  setQCReport: (id: string, report: LocalQCReport) => void;
   pendingUploads: Recording[];
   isLoading: boolean;
 }
@@ -65,14 +67,39 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
+  const setQCReport = useCallback(
+    (id: string, report: LocalQCReport) => {
+      setRecordings((prev) => {
+        const next = prev.map((r) => (r.id === id ? { ...r, qcReport: report } : r));
+        persist(next);
+        return next;
+      });
+    },
+    [persist],
+  );
+
   const pendingUploads = useMemo(
-    () => recordings.filter((r) => r.uploadStatus === "queued" || r.uploadStatus === "failed" || r.uploadStatus === "retrying"),
+    () =>
+      recordings.filter(
+        (r) =>
+          r.uploadStatus === "queued" ||
+          r.uploadStatus === "failed" ||
+          r.uploadStatus === "retrying",
+      ),
     [recordings],
   );
 
   const value = useMemo(
-    () => ({ recordings, addRecording, removeRecording, updateUploadStatus, pendingUploads, isLoading }),
-    [recordings, addRecording, removeRecording, updateUploadStatus, pendingUploads, isLoading],
+    () => ({
+      recordings,
+      addRecording,
+      removeRecording,
+      updateUploadStatus,
+      setQCReport,
+      pendingUploads,
+      isLoading,
+    }),
+    [recordings, addRecording, removeRecording, updateUploadStatus, setQCReport, pendingUploads, isLoading],
   );
 
   return <RecordingsContext.Provider value={value}>{children}</RecordingsContext.Provider>;

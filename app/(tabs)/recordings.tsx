@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useRecordings } from "@/lib/recordings-context";
 import Colors from "@/constants/colors";
 import type { Recording, UploadStatus } from "@/lib/types";
+import type { QCResult } from "@/lib/qc-types";
 
 const statusConfig: Record<UploadStatus, { icon: string; label: string; color: string }> = {
   queued: { icon: "time-outline", label: "Queued", color: "#F59E0B" },
@@ -23,6 +24,34 @@ const statusConfig: Record<UploadStatus, { icon: string; label: string; color: s
   failed: { icon: "alert-circle-outline", label: "Failed", color: "#EF4444" },
   retrying: { icon: "refresh-outline", label: "Retrying", color: "#F59E0B" },
 };
+
+const qcResultConfig: Record<QCResult, { label: string; color: string; icon: string }> = {
+  passed: { label: "QC Passed", color: Colors.dark.success, icon: "checkmark-circle" },
+  passed_with_warning: { label: "QC Warning", color: Colors.dark.warning, icon: "alert-circle" },
+  blocked: { label: "QC Blocked", color: Colors.dark.error, icon: "close-circle" },
+};
+
+function QCBadge({ result, score }: { result: QCResult; score: number }) {
+  const cfg = qcResultConfig[result];
+  return (
+    <View style={[qcStyles.badge, { backgroundColor: cfg.color + "15" }]}>
+      <Ionicons name={cfg.icon as any} size={11} color={cfg.color} />
+      <Text style={[qcStyles.text, { color: cfg.color }]}>{Math.round(score)}</Text>
+    </View>
+  );
+}
+
+const qcStyles = StyleSheet.create({
+  badge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  text: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+});
 
 function RecordingItem({
   recording,
@@ -72,6 +101,12 @@ function RecordingItem({
               <Ionicons name={config.icon as any} size={12} color={config.color} />
               <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
             </View>
+            {recording.qcReport && (
+              <QCBadge
+                result={recording.qcReport.qcResult}
+                score={recording.qcReport.readinessScore}
+              />
+            )}
           </View>
         </View>
       </View>
@@ -113,15 +148,27 @@ export default function RecordingsScreen() {
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   const uploadedCount = recordings.filter((r) => r.uploadStatus === "uploaded").length;
+  const passedQC = recordings.filter((r) => r.qcReport?.qcResult === "passed").length;
+  const hasQC = recordings.some((r) => r.qcReport);
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + webTopInset + 12 }]}>
         <Text style={[styles.headerTitle, { color: c.text }]}>Recordings</Text>
         {recordings.length > 0 && (
-          <Text style={[styles.headerSubtitle, { color: c.textSecondary }]}>
-            {uploadedCount}/{recordings.length} uploaded
-          </Text>
+          <View style={styles.headerMeta}>
+            <Text style={[styles.headerSubtitle, { color: c.textSecondary }]}>
+              {uploadedCount}/{recordings.length} uploaded
+            </Text>
+            {hasQC && (
+              <View style={[styles.qcSummary, { backgroundColor: Colors.primary + "12" }]}>
+                <Ionicons name="shield-checkmark-outline" size={12} color={Colors.primary} />
+                <Text style={[styles.qcSummaryText, { color: Colors.primary }]}>
+                  {passedQC} QC passed
+                </Text>
+              </View>
+            )}
+          </View>
         )}
       </View>
 
@@ -163,7 +210,17 @@ const styles = StyleSheet.create({
     alignItems: "flex-end" as const,
   },
   headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  headerSubtitle: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 4 },
+  headerMeta: { alignItems: "flex-end" as const, gap: 4 },
+  headerSubtitle: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  qcSummary: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  qcSummaryText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   list: { paddingHorizontal: 20, gap: 10 },
   emptyList: { flex: 1 },
   card: {
@@ -192,8 +249,9 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 10,
+    gap: 6,
     marginTop: 3,
+    flexWrap: "wrap" as const,
   },
   stat: { flexDirection: "row" as const, alignItems: "center" as const, gap: 3 },
   statText: { fontSize: 11, fontFamily: "Inter_400Regular" },

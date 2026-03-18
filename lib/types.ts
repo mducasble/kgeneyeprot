@@ -1,3 +1,5 @@
+import type { LocalQCReport } from "./qc-types";
+
 export interface User {
   id: string;
   username: string;
@@ -28,4 +30,6 @@ export interface Recording {
   uploadStatus: UploadStatus;
   submissionId?: string;
   thumbnailUri?: string;
+  qcReport?: LocalQCReport;
+  deviceOrientation?: "portrait" | "landscape";
 }

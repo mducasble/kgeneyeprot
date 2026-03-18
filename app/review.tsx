@@ -1,81 +1,680 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { router } from "expo-router";
-import { Pressable } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  useColorScheme,
+  Platform,
+  Animated,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useRecordings } from "@/lib/recordings-context";
+import { runQCEngine, generateFrameSamples, QC_VERSION } from "@/lib/qc-engine";
+import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
+import type { LocalQCReport, QCResult } from "@/lib/qc-types";
 import Colors from "@/constants/colors";
 
-export default function ReviewScreen() {
-  const insets = useSafeAreaInsets();
+type CheckStatus = "good" | "warning" | "failed";
+
+interface QCCheckRow {
+  label: string;
+  status: CheckStatus;
+  detail: string;
+  icon: string;
+}
+
+function qcCheckRows(report: LocalQCReport): QCCheckRow[] {
+  const t = DEFAULT_QC_THRESHOLDS;
+  return [
+    {
+      label: "Hands Visible",
+      status:
+        report.handPresenceRate >= t.minHandPresenceRate
+          ? "good"
+          : report.handPresenceRate >= t.minHandPresenceRate * 0.7
+          ? "warning"
+          : "failed",
+      detail: `${Math.round(report.handPresenceRate * 100)}% of frames`,
+      icon: "hand-left-outline",
+    },
+    {
+      label: "Face Privacy",
+      status:
+        report.facePresenceRate <= t.maxFacePresenceRate
+          ? "good"
+          : report.facePresenceRate <= t.maxFacePresenceRate * 2
+          ? "warning"
+          : "failed",
+      detail:
+        report.facePresenceRate < 0.01
+          ? "No face detected"
+          : `${Math.round(report.facePresenceRate * 100)}% of frames`,
+      icon: "shield-checkmark-outline",
+    },
+    {
+      label: "Orientation",
+      status:
+        t.requiredOrientation === "any" || report.orientation === t.requiredOrientation
+          ? "good"
+          : "failed",
+      detail: `${report.orientation.charAt(0).toUpperCase() + report.orientation.slice(1)}${
+        t.requiredOrientation !== "any" ? ` (${t.requiredOrientation} required)` : ""
+      }`,
+      icon: "phone-portrait-outline",
+    },
+    {
+      label: "Duration",
+      status:
+        report.durationMs >= t.minDurationMs
+          ? "good"
+          : "failed",
+      detail: `${Math.round(report.durationMs / 1000)}s recorded`,
+      icon: "time-outline",
+    },
+    {
+      label: "Lighting",
+      status:
+        report.brightnessScore >= t.minBrightnessScore + 15
+          ? "good"
+          : report.brightnessScore >= t.minBrightnessScore
+          ? "warning"
+          : "failed",
+      detail:
+        report.brightnessScore >= 70 ? "Good" : report.brightnessScore >= 40 ? "Low" : "Very low",
+      icon: "sunny-outline",
+    },
+    {
+      label: "Stability",
+      status:
+        report.stabilityScore >= t.minStabilityScore + 20
+          ? "good"
+          : report.stabilityScore >= t.minStabilityScore
+          ? "warning"
+          : "failed",
+      detail:
+        report.stabilityScore >= 75
+          ? "Steady"
+          : report.stabilityScore >= 50
+          ? "Moderate movement"
+          : "Excessive movement",
+      icon: "phone-landscape-outline",
+    },
+    {
+      label: "Sharpness",
+      status:
+        report.blurScore >= t.minBlurScore + 15
+          ? "good"
+          : report.blurScore >= t.minBlurScore
+          ? "warning"
+          : "failed",
+      detail: report.blurScore >= 70 ? "Clear" : report.blurScore >= 45 ? "Slightly blurry" : "Blurry",
+      icon: "eye-outline",
+    },
+  ];
+}
+
+function ScoreMeter({ score, result }: { score: number; result: QCResult }) {
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: score,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+  }, [score]);
+
+  const color =
+    result === "passed"
+      ? Colors.dark.success
+      : result === "passed_with_warning"
+      ? Colors.dark.warning
+      : Colors.dark.error;
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.dark.background }]}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          style={({ pressed }) => [styles.btn, { opacity: pressed ? 0.7 : 1 }]}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </Pressable>
-        <Text style={styles.title}>Review Recording</Text>
-        <View style={{ width: 40 }} />
-      </View>
-      <View style={styles.content}>
-        <Ionicons name="videocam-outline" size={48} color={Colors.dark.textTertiary} />
-        <Text style={styles.text}>Recording saved successfully</Text>
-        <Text style={styles.subtext}>Check the Uploads tab to manage your recording</Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.doneBtn,
-            { backgroundColor: Colors.primary, opacity: pressed ? 0.9 : 1 },
+    <View style={scoreStyles.container}>
+      <View style={scoreStyles.trackBg}>
+        <Animated.View
+          style={[
+            scoreStyles.fill,
+            {
+              backgroundColor: color,
+              width: progressAnim.interpolate({
+                inputRange: [0, 100],
+                outputRange: ["0%", "100%"],
+              }),
+            },
           ]}
-          onPress={() => router.dismissAll()}
-        >
-          <Text style={styles.doneBtnText}>Done</Text>
-        </Pressable>
+        />
+      </View>
+      <Text style={[scoreStyles.value, { color }]}>{Math.round(score)}</Text>
+    </View>
+  );
+}
+
+const scoreStyles = StyleSheet.create({
+  container: { flexDirection: "row" as const, alignItems: "center" as const, gap: 12 },
+  trackBg: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden" as const,
+  },
+  fill: { height: "100%", borderRadius: 5 },
+  value: { fontSize: 22, fontFamily: "Inter_700Bold", minWidth: 40, textAlign: "right" as const },
+});
+
+function CheckRow({ check }: { check: QCCheckRow }) {
+  const statusColor =
+    check.status === "good"
+      ? Colors.dark.success
+      : check.status === "warning"
+      ? Colors.dark.warning
+      : Colors.dark.error;
+
+  const statusLabel =
+    check.status === "good" ? "Good" : check.status === "warning" ? "Warning" : "Failed";
+
+  const statusIcon =
+    check.status === "good"
+      ? "checkmark-circle"
+      : check.status === "warning"
+      ? "alert-circle"
+      : "close-circle";
+
+  return (
+    <View style={checkStyles.row}>
+      <View style={[checkStyles.icon, { backgroundColor: statusColor + "15" }]}>
+        <Ionicons name={check.icon as any} size={18} color={statusColor} />
+      </View>
+      <View style={checkStyles.info}>
+        <Text style={checkStyles.label}>{check.label}</Text>
+        <Text style={checkStyles.detail}>{check.detail}</Text>
+      </View>
+      <View style={[checkStyles.statusBadge, { backgroundColor: statusColor + "15" }]}>
+        <Ionicons name={statusIcon as any} size={14} color={statusColor} />
+        <Text style={[checkStyles.statusText, { color: statusColor }]}>{statusLabel}</Text>
       </View>
     </View>
   );
 }
 
+const checkStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  icon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  info: { flex: 1, gap: 1 },
+  label: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  detail: { color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "Inter_400Regular" },
+  statusBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+});
+
+function AnalysisLoader({ progress }: { progress: number }) {
+  const steps = [
+    "Reading video metadata…",
+    "Sampling frames…",
+    "Analyzing hand visibility…",
+    "Checking face privacy…",
+    "Computing quality scores…",
+    "Finalizing QC report…",
+  ];
+  const step = Math.min(Math.floor(progress / 17), steps.length - 1);
+
+  return (
+    <View style={loaderStyles.container}>
+      <ActivityIndicator size="large" color={Colors.primary} />
+      <Text style={loaderStyles.title}>Analyzing Recording</Text>
+      <Text style={loaderStyles.step}>{steps[step]}</Text>
+      <View style={loaderStyles.track}>
+        <View style={[loaderStyles.fill, { width: `${progress}%` as any }]} />
+      </View>
+      <Text style={loaderStyles.pct}>{Math.round(progress)}%</Text>
+    </View>
+  );
+}
+
+const loaderStyles = StyleSheet.create({
+  container: { flex: 1, alignItems: "center" as const, justifyContent: "center" as const, gap: 16, padding: 40 },
+  title: { color: "#fff", fontSize: 20, fontFamily: "Inter_700Bold" },
+  step: { color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" as const },
+  track: {
+    width: "100%",
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden" as const,
+  },
+  fill: { height: "100%", borderRadius: 3, backgroundColor: Colors.primary },
+  pct: { color: Colors.primary, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+});
+
+export default function ReviewScreen() {
+  const params = useLocalSearchParams<{
+    recordingId: string;
+    durationMs: string;
+    fileSize: string;
+    orientation: string;
+    questId: string;
+    questTitle: string;
+  }>();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const { updateUploadStatus, setQCReport, recordings } = useRecordings();
+
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [qcReport, setQcReport] = useState<LocalQCReport | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const recordingId = params.recordingId || "";
+  const durationMs = Number(params.durationMs || 30000);
+  const fileSize = Number(params.fileSize || 10 * 1024 * 1024);
+  const orientation = (params.orientation || "portrait") as "portrait" | "landscape";
+  const questId = params.questId || "";
+  const questTitle = params.questTitle || "Unknown Quest";
+
+  const webTopInset = Platform.OS === "web" ? 67 : 0;
+
+  useEffect(() => {
+    let mounted = true;
+    let prog = 0;
+
+    const progressInterval = setInterval(() => {
+      if (!mounted) return;
+      prog = Math.min(prog + Math.random() * 8 + 3, 95);
+      setAnalysisProgress(prog);
+    }, 150);
+
+    setTimeout(() => {
+      if (!mounted) return;
+      clearInterval(progressInterval);
+
+      const stabilityReadings = Array.from({ length: 30 }, () => 60 + Math.random() * 35);
+      const frames = generateFrameSamples(durationMs, 1, stabilityReadings);
+
+      const report = runQCEngine(
+        {
+          recordingId,
+          questId,
+          durationMs,
+          fileSizeBytes: fileSize,
+          orientation,
+          frames,
+          stabilityReadings,
+        },
+        DEFAULT_QC_THRESHOLDS,
+      );
+
+      setAnalysisProgress(100);
+      setTimeout(() => {
+        if (!mounted) return;
+        setQcReport(report);
+        if (recordingId) setQCReport(recordingId, report);
+        if (Platform.OS !== "web") {
+          if (report.qcResult === "blocked") {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          } else if (report.qcResult === "passed") {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          }
+        }
+      }, 400);
+    }, 3000);
+
+    return () => {
+      mounted = false;
+      clearInterval(progressInterval);
+    };
+  }, []);
+
+  const handleConfirmUpload = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.dismissAll();
+  };
+
+  const handleRetake = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    updateUploadStatus(recordingId, "failed");
+    router.back();
+  };
+
+  if (!qcReport) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+        <View style={styles.topBar}>
+          <Pressable
+            style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="close" size={22} color="rgba(255,255,255,0.5)" />
+          </Pressable>
+          <Text style={styles.topBarTitle}>Quality Check</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <AnalysisLoader progress={analysisProgress} />
+      </View>
+    );
+  }
+
+  const resultConfig = {
+    passed: {
+      color: Colors.dark.success,
+      icon: "checkmark-circle",
+      title: "Upload Ready",
+      subtitle: "Great recording! Your video passed all quality checks.",
+      bg: Colors.dark.success + "10",
+    },
+    passed_with_warning: {
+      color: Colors.dark.warning,
+      icon: "alert-circle",
+      title: "Upload Ready",
+      subtitle: "Your recording can be uploaded, but some quality issues were noted.",
+      bg: Colors.dark.warning + "10",
+    },
+    blocked: {
+      color: Colors.dark.error,
+      icon: "close-circle",
+      title: "Re-record Required",
+      subtitle: "Your recording doesn't meet the minimum quality requirements.",
+      bg: Colors.dark.error + "10",
+    },
+  }[qcReport.qcResult];
+
+  const checks = qcCheckRows(qcReport);
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="close" size={22} color="rgba(255,255,255,0.5)" />
+        </Pressable>
+        <Text style={styles.topBarTitle}>QC Report</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
+      >
+        <View style={[styles.resultCard, { backgroundColor: resultConfig.bg, borderColor: resultConfig.color + "30" }]}>
+          <View style={styles.resultHeader}>
+            <Ionicons name={resultConfig.icon as any} size={36} color={resultConfig.color} />
+            <View style={styles.resultTitles}>
+              <Text style={[styles.resultTitle, { color: resultConfig.color }]}>{resultConfig.title}</Text>
+              <Text style={styles.resultSubtitle}>{resultConfig.subtitle}</Text>
+            </View>
+          </View>
+
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreLabel}>Upload Readiness Score</Text>
+            <ScoreMeter score={qcReport.readinessScore} result={qcReport.qcResult} />
+            <View style={styles.scoreLegend}>
+              <Text style={styles.legendItem}>
+                <Text style={{ color: Colors.dark.error }}>■</Text> Block &lt;65
+              </Text>
+              <Text style={styles.legendItem}>
+                <Text style={{ color: Colors.dark.warning }}>■</Text> Warning 65–84
+              </Text>
+              <Text style={styles.legendItem}>
+                <Text style={{ color: Colors.dark.success }}>■</Text> Pass 85+
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {qcReport.blockReasons.length > 0 && (
+          <View style={[styles.section, { borderColor: Colors.dark.error + "30" }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="ban-outline" size={18} color={Colors.dark.error} />
+              <Text style={[styles.sectionTitle, { color: Colors.dark.error }]}>Blocking Issues</Text>
+            </View>
+            {qcReport.blockReasons.map((reason, i) => (
+              <View key={i} style={styles.reasonRow}>
+                <View style={[styles.reasonDot, { backgroundColor: Colors.dark.error }]} />
+                <Text style={styles.reasonText}>{reason}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {qcReport.warningReasons.length > 0 && (
+          <View style={[styles.section, { borderColor: Colors.dark.warning + "30" }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="warning-outline" size={18} color={Colors.dark.warning} />
+              <Text style={[styles.sectionTitle, { color: Colors.dark.warning }]}>Warnings</Text>
+            </View>
+            {qcReport.warningReasons.map((reason, i) => (
+              <View key={i} style={styles.reasonRow}>
+                <View style={[styles.reasonDot, { backgroundColor: Colors.dark.warning }]} />
+                <Text style={styles.reasonText}>{reason}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="clipboard-outline" size={18} color={Colors.primary} />
+            <Text style={[styles.sectionTitle, { color: "#fff" }]}>Quality Checks</Text>
+          </View>
+          {checks.map((check, i) => (
+            <CheckRow key={i} check={check} />
+          ))}
+        </View>
+
+        <View style={[styles.section, { gap: 8 }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="stats-chart-outline" size={18} color={Colors.accent} />
+            <Text style={[styles.sectionTitle, { color: "#fff" }]}>Recording Stats</Text>
+          </View>
+          <View style={styles.statsGrid}>
+            <StatChip icon="time-outline" label="Duration" value={`${Math.round(qcReport.durationMs / 1000)}s`} />
+            <StatChip icon="hand-left-outline" label="Hand Visibility" value={`${Math.round(qcReport.handPresenceRate * 100)}%`} />
+            <StatChip icon="film-outline" label="Frames Analyzed" value={String(qcReport.sampledFrameCount)} />
+            <StatChip icon="speedometer-outline" label="Stability" value={`${Math.round(qcReport.stabilityScore)}/100`} />
+          </View>
+        </View>
+      </ScrollView>
+
+      <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16 }]}>
+        <Pressable
+          style={({ pressed }) => [styles.retakeBtn, { opacity: pressed ? 0.85 : 1 }]}
+          onPress={handleRetake}
+        >
+          <Ionicons name="refresh" size={20} color={Colors.dark.textSecondary} />
+          <Text style={styles.retakeBtnText}>Retake</Text>
+        </Pressable>
+
+        {qcReport.qcResult !== "blocked" && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.uploadBtn,
+              {
+                backgroundColor: qcReport.qcResult === "passed" ? Colors.primary : Colors.dark.warning,
+                opacity: pressed ? 0.9 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
+            ]}
+            onPress={handleConfirmUpload}
+            disabled={isUploading}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+            <Text style={styles.uploadBtnText}>
+              {qcReport.qcResult === "passed" ? "Confirm Upload" : "Upload Anyway"}
+            </Text>
+          </Pressable>
+        )}
+
+        {qcReport.qcResult === "blocked" && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.uploadBtn,
+              { backgroundColor: Colors.dark.error, opacity: pressed ? 0.9 : 1 },
+            ]}
+            onPress={handleRetake}
+          >
+            <Ionicons name="videocam-outline" size={20} color="#fff" />
+            <Text style={styles.uploadBtnText}>Re-record</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function StatChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={chipStyles.chip}>
+      <Ionicons name={icon as any} size={16} color={Colors.primary} />
+      <Text style={chipStyles.value}>{value}</Text>
+      <Text style={chipStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: {
+    flex: 1,
+    minWidth: "45%" as any,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center" as const,
+    gap: 4,
+  },
+  value: { color: "#fff", fontSize: 18, fontFamily: "Inter_700Bold" },
+  label: { color: "rgba(255,255,255,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" },
+});
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#0A0E1A" },
   topBar: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
-  btn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.1)",
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  title: { color: "#fff", fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  content: {
-    flex: 1,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+  topBarTitle: { color: "#fff", fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  scroll: { paddingHorizontal: 16, paddingTop: 16, gap: 12 },
+  resultCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    gap: 16,
+  },
+  resultHeader: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
     gap: 12,
-    paddingHorizontal: 40,
   },
-  text: { color: "#fff", fontSize: 18, fontFamily: "Inter_600SemiBold", textAlign: "center" as const },
-  subtext: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center" as const,
+  resultTitles: { flex: 1, gap: 4 },
+  resultTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  resultSubtitle: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  scoreSection: { gap: 8 },
+  scoreLabel: { color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "Inter_500Medium" },
+  scoreLegend: {
+    flexDirection: "row" as const,
+    gap: 12,
+    justifyContent: "center" as const,
+    marginTop: 2,
   },
-  doneBtn: {
-    paddingHorizontal: 40,
+  legendItem: { color: "rgba(255,255,255,0.35)", fontSize: 11, fontFamily: "Inter_400Regular" },
+  section: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    padding: 16,
+  },
+  sectionHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  reasonRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 10,
+    paddingVertical: 5,
+  },
+  reasonDot: { width: 6, height: 6, borderRadius: 3, marginTop: 6 },
+  reasonText: { flex: 1, color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  statsGrid: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 8 },
+  bottomActions: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row" as const,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: "#0A0E1A",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.08)",
+  },
+  retakeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 14,
-    marginTop: 16,
+    backgroundColor: "rgba(255,255,255,0.07)",
   },
-  doneBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  retakeBtnText: { color: "rgba(255,255,255,0.6)", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  uploadBtn: {
+    flex: 1,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  uploadBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

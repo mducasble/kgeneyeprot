@@ -1,0 +1,530 @@
+ADDITIVE — LOCAL QUALITY CONTROL (QC) AND PRE-UPLOAD VALIDATION LAYER
+
+We already have the base Quest Video Recorder mobile app implemented.
+Now extend the product with a robust on-device Quality Control (QC) pipeline so that the app can prevent low-quality or invalid videos from being uploaded unnecessarily.
+
+The goal is to minimize wasted bandwidth, storage, processing cost, and user frustration by validating recordings locally before upload whenever possible.
+
+==================================================
+1. OBJECTIVE OF THIS ADDITIVE
+==================================================
+
+Extend the existing mobile app with an on-device QC workflow for video submissions.
+
+The app must:
+- run basic validation before upload
+- provide live capture guidance when possible
+- analyze sampled frames locally after recording
+- calculate a local quality/readiness score
+- block clearly invalid uploads
+- allow borderline cases to proceed with warnings
+- send QC metadata together with the submission
+- preserve the existing offline-first upload queue architecture
+
+This QC layer should be lightweight, practical, mobile-friendly, and designed for large video files.
+
+==================================================
+2. HIGH-LEVEL QC ARCHITECTURE
+==================================================
+
+Add a 3-layer capture validation model:
+
+LAYER A — PRE-CAPTURE VALIDATION
+Before the user starts recording, validate setup requirements.
+
+LAYER B — LIVE CAPTURE GUIDANCE
+During recording, run lightweight real-time checks on sampled frames and give simple guidance.
+
+LAYER C — POST-CAPTURE LOCAL QC
+After recording finishes, run a deeper local analysis on sampled frames before allowing upload.
+
+This local QC does NOT replace backend validation.
+It works as a smart filter and guidance layer.
+
+==================================================
+3. WHAT MUST BE VALIDATED LOCALLY
+==================================================
+
+The app should move the following QC checks to the device:
+
+A. Deterministic checks:
+- minimum duration
+- maximum duration if campaign defines one
+- required orientation (landscape or portrait)
+- minimum resolution
+- acceptable FPS range
+- audio track presence if disallowed
+- file size
+- local file integrity/basic readability
+
+B. Visual compliance checks using on-device AI/computer vision:
+- hand presence detection
+- hand continuity across sampled frames
+- number of hands detected when relevant
+- hand framing / whether hands stay within useful frame area
+- face detection for privacy blocking
+- hand bounding box size relative to frame
+- loss of tracking frequency
+
+C. Lightweight visual quality heuristics:
+- blur detection
+- low brightness detection
+- low contrast detection
+- excessive camera instability / jitter
+- poor framing confidence
+
+==================================================
+4. FRAME SAMPLING STRATEGY
+==================================================
+
+Do NOT analyze every frame.
+
+Implement a mobile-efficient frame sampling strategy.
+
+Default recommendation:
+- during live capture: analyze sampled frames approximately every 300–500 ms
+- after recording: extract and analyze 1 frame per second by default
+- allow campaign-level override for denser sampling if needed
+
+The system must be designed so sampling can be tuned later:
+- 1 fps for low-cost analysis
+- 2 fps for stricter campaigns
+- optional adaptive sampling for future versions
+
+Recorded videos may remain high quality (e.g. 1080p), but analysis should run on downscaled frames for performance.
+
+==================================================
+5. ON-DEVICE AI / VISION INTEGRATION
+==================================================
+
+Integrate a lightweight on-device visual analysis layer.
+
+Preferred implementation:
+- MediaPipe or equivalent on-device library for hand detection
+- MediaPipe or equivalent on-device library for face detection
+
+The app must NOT depend on cloud inference for these validations.
+All capture-time quality checks must work offline on the device.
+
+Expected outputs from on-device AI:
+- hand detected true/false
+- one hand / two hands
+- hand confidence
+- hand landmarks or bounding box
+- face detected true/false
+- face confidence
+- tracking continuity statistics
+
+==================================================
+6. PRE-CAPTURE VALIDATION
+==================================================
+
+Before allowing the user to start recording, add a pre-capture checklist screen/state.
+
+Validate:
+- camera permission granted
+- microphone permission granted if required
+- enough local storage available
+- required orientation achieved
+- quest selected
+- quest instructions acknowledged
+- optional initial framing readiness if live preview AI is enabled
+
+If the campaign requires landscape, do not allow recording to start until the device is in the correct orientation.
+
+Add a visual instruction layer:
+- hold the device in the required orientation
+- keep hands visible
+- avoid showing faces
+- ensure adequate lighting
+- keep the action area centered
+
+==================================================
+7. LIVE CAPTURE GUIDANCE
+==================================================
+
+During recording, run lightweight sampled analysis and show simple capture guidance.
+
+Do not overload the screen with technical information.
+Use simple user-facing prompts such as:
+- Keep your hands visible
+- Face detected, adjust camera
+- Improve lighting
+- Keep the action centered
+- Hold the phone steady
+
+Important:
+- warnings should only appear if a problem persists for a minimum time window
+- do not react to one isolated bad frame
+- use smoothing/debouncing to avoid flickering alerts
+
+Example:
+- if no hand is detected for 2 seconds, show warning
+- if a face is detected continuously for more than 1 second, show privacy warning
+- if brightness remains too low for several consecutive sampled frames, show lighting warning
+
+==================================================
+8. POST-CAPTURE LOCAL QC PIPELINE
+==================================================
+
+After recording finishes and before the upload is accepted, run a local QC analysis on sampled frames.
+
+This analysis should produce:
+
+1. File validation summary
+- duration
+- resolution
+- FPS
+- orientation
+- audio present/not present
+- file size
+- integrity pass/fail
+
+2. Visual compliance summary
+- percent of sampled frames with at least one hand
+- percent of sampled frames with two hands
+- face detection occurrence rate
+- hand area statistics
+- hand centering statistics
+- hand tracking continuity score
+- out-of-frame frequency
+
+3. Quality heuristics summary
+- blur score
+- brightness score
+- contrast score
+- camera stability score
+
+4. Final local QC result
+- passed
+- passed_with_warning
+- blocked
+
+==================================================
+9. LOCAL QC DECISION ENGINE
+==================================================
+
+Implement a rule-based local decision engine.
+
+There must be 3 result levels:
+
+PASS
+The recording is eligible for upload.
+
+PASS_WITH_WARNING
+The recording may be uploaded, but the user sees a warning that quality may be reviewed later.
+
+BLOCK
+The recording should not be uploaded until the user re-records.
+
+Separate failures into two classes:
+
+CLASS A — HARD BLOCK
+Examples:
+- duration below minimum
+- wrong orientation
+- face detected above campaign threshold
+- hand presence far below acceptable minimum
+- corrupted file
+- missing required quest linkage
+
+CLASS B — SOFT WARNING
+Examples:
+- mild blur
+- slightly low brightness
+- moderate instability
+- borderline framing
+- intermittent hand tracking loss
+
+==================================================
+10. LOCAL QUALITY SCORE
+==================================================
+
+Add a Local Upload Readiness Score from 0 to 100.
+
+This score should be computed from weighted components such as:
+- duration compliance
+- orientation compliance
+- resolution compliance
+- hand presence score
+- hand continuity score
+- framing score
+- face privacy score
+- blur score
+- brightness score
+- stability score
+
+Recommended interpretation:
+- 85–100 = pass
+- 65–84 = pass with warning
+- below 65 = block
+
+The scoring logic must be configurable and future-proof.
+Campaign-specific thresholds should be supported later, even if global defaults are used first.
+
+==================================================
+11. DATA MODELS TO ADD
+==================================================
+
+Add the following TypeScript models:
+
+CapturePrecheck
+- questId
+- requiredOrientation
+- storageAvailable
+- permissionsOk
+- deviceReady
+- precheckPassed
+- failureReasons[]
+
+LocalQCFrameSample
+- timestampMs
+- handDetected
+- handCount
+- handConfidence
+- handBoundingBoxes[]
+- faceDetected
+- faceConfidence
+- brightnessValue
+- blurValue
+- contrastValue
+- motionValue
+
+LocalQCReport
+- recordingId
+- questId
+- durationMs
+- resolutionWidth
+- resolutionHeight
+- fps
+- orientation
+- audioPresent
+- fileSizeBytes
+- fileIntegrityPassed
+- sampledFrameCount
+- handPresenceRate
+- dualHandRate
+- facePresenceRate
+- averageHandArea
+- handCenteringScore
+- handContinuityScore
+- blurScore
+- brightnessScore
+- contrastScore
+- stabilityScore
+- readinessScore
+- qcResult
+- blockReasons[]
+- warningReasons[]
+- generatedAt
+
+UploadSubmissionPayload
+Extend existing upload payload to include:
+- localQCReport
+- localQCVersion
+- appBuildVersion
+- deviceModel
+- deviceOS
+- optional frame-level aggregates only (not raw frames by default)
+
+==================================================
+12. UX CHANGES REQUIRED
+==================================================
+
+Update the recording flow UX.
+
+NEW FLOW:
+1. User opens quest
+2. User reads instructions
+3. User enters pre-capture readiness screen
+4. App validates required setup
+5. User records video
+6. During recording, app provides lightweight live guidance
+7. User stops recording
+8. App runs local QC analysis
+9. User sees result screen:
+   - Upload ready
+   - Upload ready with warnings
+   - Recording blocked, please retake
+10. If allowed, user confirms and submission enters upload queue
+
+The review screen must now include:
+- playback preview
+- local QC summary
+- simple explanation of issues found
+- retake button
+- confirm upload button when eligible
+
+==================================================
+13. REVIEW SCREEN REQUIREMENTS
+==================================================
+
+Add a Local QC Summary section in the recording review screen.
+
+Show:
+- overall readiness status
+- readiness score
+- key checks passed
+- warnings
+- blocking reasons if any
+
+Use simple, human-readable labels:
+- Hands visible: Good / Needs improvement / Failed
+- Face privacy: Passed / Failed
+- Lighting: Good / Low
+- Stability: Good / Unstable
+- Framing: Good / Needs improvement
+
+If blocked:
+- explain clearly why
+- suggest re-recording
+- do not enqueue upload
+
+If pass_with_warning:
+- allow upload
+- make warning visible but not overwhelming
+
+==================================================
+14. OFFLINE-FIRST BEHAVIOR
+==================================================
+
+All local QC must work offline.
+
+If the device has no internet:
+- user should still be able to record
+- local QC must still run
+- eligible recordings may still be queued locally
+- upload starts later when connection is restored
+
+Local QC must occur before entering the upload queue.
+
+==================================================
+15. CAMERA ORIENTATION CONTROL
+==================================================
+
+Add strict orientation handling.
+
+Requirements:
+- support campaign-defined required orientation
+- lock the recording screen orientation when possible
+- prevent recording start if device orientation is wrong
+- validate the actual recorded output orientation after capture
+- do not rely only on UI orientation; verify video metadata too
+
+The implementation must handle both iOS and Android carefully so preview orientation and saved file orientation are consistent.
+
+==================================================
+16. PERFORMANCE REQUIREMENTS
+==================================================
+
+This feature must be mobile-efficient.
+
+Requirements:
+- frame analysis must use downscaled frames
+- analysis must run on background threads/worklets when possible
+- avoid analyzing all frames
+- avoid UI blocking
+- avoid excessive battery drain
+- avoid thermal overload
+- keep memory footprint controlled
+
+Design for practical mobile constraints, not theoretical maximum analysis quality.
+
+==================================================
+17. SECURITY / PRIVACY
+==================================================
+
+Do not upload raw sampled frames by default.
+
+Only upload:
+- aggregated local QC metrics
+- local QC status
+- optional debug artifacts only if explicitly enabled in development mode
+
+Face detection is used for privacy enforcement and should remain local unless backend metadata requires summary counts only.
+
+==================================================
+18. BACKEND COMPATIBILITY
+==================================================
+
+The mobile app should remain compatible with the existing architecture:
+- quest API
+- upload target API
+- direct S3 upload
+- upload queue
+- submission confirmation
+
+However, extend the submission contract so backend services can receive local QC metadata.
+
+Do not redesign the existing backend contract completely.
+Add QC metadata in a backward-compatible way.
+
+==================================================
+19. FUTURE-PROOFING
+==================================================
+
+Design this local QC architecture to support future expansion to:
+- audio QC
+- photo QC
+- campaign-specific thresholds
+- AI-assisted retake guidance
+- backend comparison between local QC and server QC
+- adaptive contributor scoring
+- optional smart preview upload before full upload
+
+==================================================
+20. IMPLEMENTATION DELIVERABLES
+==================================================
+
+Update the existing React Native app to include:
+
+- pre-capture validation flow
+- live capture guidance system
+- on-device hand detection integration
+- on-device face detection integration
+- frame sampling pipeline
+- post-capture local QC engine
+- local readiness score calculation
+- blocked/pass/warning result screen
+- updated review screen with QC summary
+- extended upload payload with QC metadata
+- orientation enforcement logic
+- mockable QC service layer for development/testing
+- clear internal documentation explaining where QC runs and how decisions are made
+
+==================================================
+21. IMPORTANT PRODUCT RULES
+==================================================
+
+- The app must prevent clearly invalid uploads whenever possible
+- The app must not depend on internet for QC
+- The app must not upload unnecessary large files
+- The app should guide the user before and during recording
+- The app should preserve a simple user experience
+- The app should remain quest-first
+- The app should remain offline-first
+- The app should remain compatible with large video uploads via queue
+- The app should be architected so backend/server QC can still exist as a second validation layer
+
+==================================================
+22. DESIGN PRINCIPLES FOR THIS ADDITIVE
+==================================================
+
+Prioritize:
+- simplicity
+- clarity
+- bandwidth savings
+- high first-pass success rate
+- good user guidance
+- robust local validation
+- mobile performance
+- future extensibility
+
+Avoid:
+- over-analyzing every frame
+- cloud-dependent QC
+- confusing technical messaging to users
+- blocking uploads for minor non-critical issues
+- tightly coupling UI to one QC model implementation
+
+Build this as a production-grade extension of the current app, not as a prototype experiment.

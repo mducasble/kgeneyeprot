@@ -16,6 +16,8 @@ import { useRecordings } from "@/lib/recordings-context";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import type { Recording, UploadStatus } from "@/lib/types";
+import type { UploadSubmissionPayload } from "@/lib/qc-types";
+import { QC_VERSION } from "@/lib/qc-engine";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -43,6 +45,16 @@ function UploadItem({
   const date = new Date(recording.createdAt);
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
+  const qcReport = recording.qcReport;
+  const qcColor =
+    !qcReport
+      ? c.textTertiary
+      : qcReport.qcResult === "passed"
+      ? Colors.dark.success
+      : qcReport.qcResult === "passed_with_warning"
+      ? Colors.dark.warning
+      : Colors.dark.error;
+
   return (
     <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
       <View style={styles.cardContent}>
@@ -61,6 +73,14 @@ function UploadItem({
             <Text style={[styles.fileSize, { color: c.textTertiary }]}>
               {(recording.fileSize / (1024 * 1024)).toFixed(1)} MB
             </Text>
+            {qcReport && (
+              <View style={[styles.qcBadge, { backgroundColor: qcColor + "15" }]}>
+                <Ionicons name="shield-checkmark-outline" size={11} color={qcColor} />
+                <Text style={[styles.qcText, { color: qcColor }]}>
+                  {Math.round(qcReport.readinessScore)}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -85,6 +105,25 @@ function UploadItem({
   );
 }
 
+function buildSubmissionPayload(recording: Recording): UploadSubmissionPayload | null {
+  if (!recording.qcReport) return null;
+  return {
+    questId: recording.questId,
+    recordingId: recording.id,
+    localQCReport: recording.qcReport,
+    localQCVersion: QC_VERSION,
+    appBuildVersion: "1.0.0",
+    deviceOS: Platform.OS,
+    frameAggregates: {
+      handPresenceRate: recording.qcReport.handPresenceRate,
+      facePresenceRate: recording.qcReport.facePresenceRate,
+      avgBlur: recording.qcReport.blurScore,
+      avgBrightness: recording.qcReport.brightnessScore,
+      avgStability: recording.qcReport.stabilityScore,
+    },
+  };
+}
+
 export default function UploadsScreen() {
   const { recordings, updateUploadStatus, removeRecording } = useRecordings();
   const { token } = useAuth();
@@ -106,13 +145,18 @@ export default function UploadsScreen() {
 
     try {
       const baseUrl = getApiUrl();
+      const payload = buildSubmissionPayload(recording);
+      const body = payload
+        ? JSON.stringify({ questId: recording.questId, recordingId: recording.id, qcPayload: payload })
+        : JSON.stringify({ questId: recording.questId, recordingId: recording.id });
+
       const res = await fetch(new URL("/api/submissions", baseUrl).toString(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ questId: recording.questId, recordingId: recording.id }),
+        body,
       });
 
       if (!res.ok) throw new Error("Submission failed");
@@ -264,6 +308,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     gap: 8,
     marginTop: 2,
+    flexWrap: "wrap" as const,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -272,6 +317,15 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   fileSize: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  qcBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  qcText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   actions: {
     flexDirection: "row" as const,
     justifyContent: "flex-end" as const,
