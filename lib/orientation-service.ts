@@ -74,6 +74,7 @@ export function useStabilityTracker() {
     }
 
     let subscription: any;
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
 
     (async () => {
       try {
@@ -95,17 +96,19 @@ export function useStabilityTracker() {
           },
         );
       } catch {
-        const mockInterval = setInterval(() => {
+        fallbackInterval = setInterval(() => {
           setStabilityReadings((prev) => {
             const s = 70 + Math.random() * 25;
             return [...prev, s].slice(-60);
           });
         }, 500);
-        return () => clearInterval(mockInterval);
       }
     })();
 
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      if (fallbackInterval !== null) clearInterval(fallbackInterval);
+    };
   }, []);
 
   return stabilityReadings;

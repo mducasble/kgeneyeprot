@@ -27,8 +27,7 @@ A mobile application for collecting real-world video data from users performing 
 - React Native / Expo SDK 54
 - expo-router (file-based routing)
 - expo-camera (video recording)
-- expo-sensors (accelerometer for stability + orientation detection)
-- expo-screen-orientation (orientation locking)
+- expo-sensors@~15.0.8 (accelerometer for stability + orientation detection; SDK 54 compatible)
 - expo-secure-store (token storage)
 - @react-native-async-storage/async-storage (data persistence)
 - @tanstack/react-query (API communication)
