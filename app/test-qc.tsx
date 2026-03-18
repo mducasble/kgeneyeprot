@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +14,68 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+
+async function extractVideoMetadata(
+  uri: string,
+  assetDuration?: number | null,
+  assetWidth?: number | null,
+  assetHeight?: number | null,
+  assetFileSize?: number | null,
+): Promise<{ durationMs: number; width: number; height: number; fileSize: number }> {
+  const fallbackDur = (assetDuration ?? 0) > 0 ? assetDuration! : 0;
+  const fallbackW = (assetWidth ?? 0) > 0 ? assetWidth! : 1920;
+  const fallbackH = (assetHeight ?? 0) > 0 ? assetHeight! : 1080;
+  const fallbackSize =
+    (assetFileSize ?? 0) > 0
+      ? assetFileSize!
+      : Math.round(((fallbackDur || 30000) / 1000) * 2.5 * 1024 * 1024);
+
+  if (Platform.OS !== "web") {
+    return {
+      durationMs: fallbackDur > 0 ? fallbackDur : 30000,
+      width: fallbackW,
+      height: fallbackH,
+      fileSize: fallbackSize,
+    };
+  }
+
+  return new Promise((resolve) => {
+    const fallback = {
+      durationMs: fallbackDur > 0 ? fallbackDur : 30000,
+      width: fallbackW,
+      height: fallbackH,
+      fileSize: fallbackSize,
+    };
+
+    const timer = setTimeout(() => resolve(fallback), 6000);
+
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+
+    video.onloadedmetadata = () => {
+      clearTimeout(timer);
+      const durationMs =
+        isFinite(video.duration) && video.duration > 0
+          ? Math.round(video.duration * 1000)
+          : fallback.durationMs;
+      const width = video.videoWidth > 0 ? video.videoWidth : fallback.width;
+      const height = video.videoHeight > 0 ? video.videoHeight : fallback.height;
+      const fileSize =
+        (assetFileSize ?? 0) > 0
+          ? assetFileSize!
+          : Math.round((durationMs / 1000) * 2.5 * 1024 * 1024);
+      resolve({ durationMs, width, height, fileSize });
+    };
+
+    video.onerror = () => {
+      clearTimeout(timer);
+      resolve(fallback);
+    };
+
+    video.src = uri;
+  });
+}
 
 interface PickedVideo {
   uri: string;
@@ -60,6 +123,7 @@ export default function TestQCScreen() {
   const insets = useSafeAreaInsets();
   const [picked, setPicked] = useState<PickedVideo | null>(null);
   const [picking, setPicking] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -68,10 +132,7 @@ export default function TestQCScreen() {
     setPicking(true);
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        setPicking(false);
-        return;
-      }
+      if (!perm.granted) return;
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["videos"],
@@ -79,24 +140,28 @@ export default function TestQCScreen() {
         quality: 1,
       });
 
-      if (result.canceled || !result.assets?.[0]) {
-        setPicking(false);
-        return;
-      }
+      if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
-      const durationMs = (asset.duration ?? 0) > 0 ? (asset.duration ?? 30000) : 30000;
-      const fileSize =
-        (asset as any).fileSize > 0
-          ? (asset as any).fileSize
-          : Math.round((durationMs / 1000) * 2.5 * 1024 * 1024);
+      setPicking(false);
+      setExtracting(true);
+
+      const meta = await extractVideoMetadata(
+        asset.uri,
+        asset.duration,
+        asset.width,
+        asset.height,
+        (asset as any).fileSize,
+      );
+
       const orientation: "portrait" | "landscape" =
-        (asset.width ?? 0) > (asset.height ?? 0) ? "landscape" : "portrait";
+        meta.width > meta.height ? "landscape" : "portrait";
       const name = (asset as any).fileName || asset.uri.split("/").pop() || "video.mp4";
 
-      setPicked({ uri: asset.uri, durationMs, fileSize, orientation, name });
+      setPicked({ uri: asset.uri, durationMs: meta.durationMs, fileSize: meta.fileSize, orientation, name });
     } finally {
       setPicking(false);
+      setExtracting(false);
     }
   };
 
@@ -108,7 +173,7 @@ export default function TestQCScreen() {
       uri: "file://simulated_test.mp4",
       durationMs,
       fileSize,
-      orientation: "portrait",
+      orientation: "landscape",
       name: "simulated_test.mp4",
     });
   };
@@ -167,13 +232,23 @@ export default function TestQCScreen() {
           <Text style={styles.sectionTitle}>Escolher Vídeo</Text>
 
           <Pressable
-            style={({ pressed }) => [styles.pickBtn, { opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.pickBtn, { opacity: pressed || picking || extracting ? 0.75 : 1 }]}
             onPress={handlePickVideo}
-            disabled={picking}
+            disabled={picking || extracting}
           >
-            <Ionicons name="folder-open-outline" size={22} color="#fff" />
+            {extracting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="folder-open-outline" size={22} color="#fff" />
+            )}
             <Text style={styles.pickBtnText}>
-              {picking ? "Abrindo galeria…" : picked ? "Escolher outro vídeo" : "Escolher da galeria"}
+              {extracting
+                ? "Lendo metadados…"
+                : picking
+                ? "Abrindo galeria…"
+                : picked
+                ? "Escolher outro vídeo"
+                : "Escolher da galeria"}
             </Text>
           </Pressable>
 

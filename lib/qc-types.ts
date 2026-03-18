@@ -71,7 +71,7 @@ export interface QCThresholds {
 export const DEFAULT_QC_THRESHOLDS: QCThresholds = {
   minDurationMs: 5_000,
   maxDurationMs: 600_000,
-  requiredOrientation: "portrait",
+  requiredOrientation: "landscape",
   minHandPresenceRate: 0.6,
   maxFacePresenceRate: 0.15,
   minReadinessScore: 65,
