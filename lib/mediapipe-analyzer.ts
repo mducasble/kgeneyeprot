@@ -206,9 +206,10 @@ async function analyzeOnWeb(
   canvas.width = Math.round(vw * scale);
   canvas.height = Math.round(vh * scale);
 
+  const SAMPLE_RATE_FPS = 5;
   const totalSeconds = Math.max(1, Math.floor(durationMs / 1000));
   const sampleTimes: number[] = [];
-  for (let t = 0.5; t < totalSeconds; t += 1) {
+  for (let t = 1 / SAMPLE_RATE_FPS / 2; t < totalSeconds; t += 1 / SAMPLE_RATE_FPS) {
     sampleTimes.push(t);
   }
 
