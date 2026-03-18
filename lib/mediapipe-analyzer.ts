@@ -210,7 +210,6 @@ async function analyzeOnWeb(
   const sampleTimes: number[] = [];
   for (let t = 0.5; t < totalSeconds; t += 1) {
     sampleTimes.push(t);
-    if (sampleTimes.length >= 60) break;
   }
 
   const avgStability =
