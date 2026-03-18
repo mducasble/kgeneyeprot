@@ -1,58 +1,97 @@
 import { Platform } from "react-native";
 import type { LocalQCFrameSample } from "./qc-types";
 
-const MEDIAPIPE_WASM_CDN =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MEDIAPIPE_VERSION = "0.10.32";
+const SINGLETON_KEY = `mp-${MEDIAPIPE_VERSION}`;
+const MEDIAPIPE_WASM_CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+const MEDIAPIPE_WASM_FALLBACK = `https://unpkg.com/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 
 const HAND_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
-const FACE_MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.task";
+const FACE_LANDMARKER_URL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
+let _singletonKey: string | null = null;
 let handLandmarker: any = null;
-let faceDetector: any = null;
+let faceLandmarker: any = null;
 let initPromise: Promise<boolean> | null = null;
+let mediaPipeReady = false;
+
+function resetSingletons() {
+  handLandmarker = null;
+  faceLandmarker = null;
+  initPromise = null;
+  mediaPipeReady = false;
+  _singletonKey = null;
+}
+
+async function tryInitWithWasm(wasmPath: string): Promise<boolean> {
+  const { FilesetResolver, HandLandmarker, FaceLandmarker } = await import(
+    "@mediapipe/tasks-vision"
+  );
+  console.log("[MediaPipe] Trying WASM from:", wasmPath);
+  const vision = await FilesetResolver.forVisionTasks(wasmPath);
+  console.log("[MediaPipe] FilesetResolver OK, loading HandLandmarker...");
+
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: HAND_MODEL_URL,
+    },
+    runningMode: "IMAGE",
+    numHands: 2,
+    minHandDetectionConfidence: 0.4,
+    minHandPresenceConfidence: 0.4,
+    minTrackingConfidence: 0.4,
+  });
+
+  console.log("[MediaPipe] HandLandmarker ready. Trying FaceLandmarker...");
+
+  try {
+    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: FACE_LANDMARKER_URL,
+      },
+      runningMode: "IMAGE",
+      numFaces: 1,
+      minFaceDetectionConfidence: 0.4,
+      minFacePresenceConfidence: 0.4,
+      minTrackingConfidence: 0.4,
+    });
+    console.log("[MediaPipe] FaceLandmarker ready");
+  } catch (fe: any) {
+    console.warn(
+      "[MediaPipe] FaceLandmarker unavailable — face checks will default to 'no face':",
+      fe?.message ?? fe,
+    );
+    faceLandmarker = null;
+  }
+
+  mediaPipeReady = true;
+  _singletonKey = SINGLETON_KEY;
+  console.log("[MediaPipe] Init complete (hands=ready, face=" + (faceLandmarker ? "ready" : "unavailable") + ")");
+  return true;
+}
 
 async function initMediaPipe(): Promise<boolean> {
-  if (handLandmarker && faceDetector) return true;
+  if (mediaPipeReady && handLandmarker && _singletonKey === SINGLETON_KEY) return true;
+  if (_singletonKey !== SINGLETON_KEY) resetSingletons();
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    try {
-      const { FilesetResolver, HandLandmarker, FaceDetector } = await import(
-        "@mediapipe/tasks-vision"
-      );
-      const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_CDN);
-
-      [handLandmarker, faceDetector] = await Promise.all([
-        HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: HAND_MODEL_URL,
-            delegate: "CPU",
-          },
-          runningMode: "IMAGE",
-          numHands: 2,
-          minHandDetectionConfidence: 0.4,
-          minHandPresenceConfidence: 0.4,
-          minTrackingConfidence: 0.4,
-        }),
-        FaceDetector.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: FACE_MODEL_URL,
-            delegate: "CPU",
-          },
-          runningMode: "IMAGE",
-          minDetectionConfidence: 0.4,
-        }),
-      ]);
-
-      return true;
-    } catch (e) {
-      console.warn("[MediaPipe] Init failed:", e);
-      initPromise = null;
-      return false;
+    for (const wasmPath of [MEDIAPIPE_WASM_CDN, MEDIAPIPE_WASM_FALLBACK]) {
+      try {
+        const ok = await tryInitWithWasm(wasmPath);
+        if (ok) return true;
+      } catch (e: any) {
+        const msg = e?.message ?? JSON.stringify(e);
+        console.warn(`[MediaPipe] Init failed with ${wasmPath}:`, msg);
+        handLandmarker = null;
+        faceLandmarker = null;
+      }
     }
+    initPromise = null;
+    return false;
   })();
 
   return initPromise;
@@ -113,11 +152,7 @@ function pixelBrightnessAndVariance(data: Uint8ClampedArray): {
 }
 
 function isSimulatedUri(uri: string): boolean {
-  return (
-    uri.startsWith("file://simulated") ||
-    uri === "" ||
-    uri.startsWith("file://simulated")
-  );
+  return uri.startsWith("file://simulated") || uri === "";
 }
 
 async function analyzeOnWeb(
@@ -135,7 +170,7 @@ async function analyzeOnWeb(
   const ok = await initMediaPipe();
   onProgress?.(12);
 
-  if (!ok) {
+  if (!ok || !handLandmarker) {
     console.warn("[MediaPipe] Falling back to simulation");
     return generateSimulatedFrames(durationMs, stabilityData);
   }
@@ -235,14 +270,16 @@ async function analyzeOnWeb(
       console.warn("[MediaPipe] Hand detection error:", e);
     }
 
-    try {
-      const faceResult = faceDetector.detect(canvas);
-      faceDetected = faceResult.detections.length > 0;
-      if (faceDetected) {
-        faceConfidence = faceResult.detections[0]?.categories?.[0]?.score ?? 0.6;
+    if (faceLandmarker) {
+      try {
+        const faceResult = faceLandmarker.detect(canvas);
+        faceDetected = (faceResult.faceLandmarks?.length ?? 0) > 0;
+        if (faceDetected) {
+          faceConfidence = faceResult.faceBlendshapes?.[0]?.categories?.[0]?.score ?? 0.6;
+        }
+      } catch (e) {
+        console.warn("[MediaPipe] Face detection error:", e);
       }
-    } catch (e) {
-      console.warn("[MediaPipe] Face detection error:", e);
     }
 
     const stabilityNow = avgStability + (Math.random() - 0.5) * 10;
