@@ -97,6 +97,15 @@ async function initMediaPipe(): Promise<boolean> {
   return initPromise;
 }
 
+let _canvasCtx: CanvasRenderingContext2D | null = null;
+
+function getCanvasCtx(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+  if (!_canvasCtx || _canvasCtx.canvas !== canvas) {
+    _canvasCtx = canvas.getContext("2d", { willReadFrequently: true }) ?? null;
+  }
+  return _canvasCtx;
+}
+
 function seekAndCapture(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
@@ -106,17 +115,24 @@ function seekAndCapture(
     const cleanup = setTimeout(() => {
       video.onseeked = null;
       resolve(null);
-    }, 5000);
+    }, 8000);
 
     video.onseeked = () => {
       clearTimeout(cleanup);
       video.onseeked = null;
       try {
-        const ctx = canvas.getContext("2d");
+        const ctx = getCanvasCtx(canvas);
         if (!ctx) { resolve(null); return; }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
-      } catch {
+        try {
+          resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        } catch (secErr) {
+          // Canvas taint — draw succeeded but pixel read blocked
+          console.warn("[MediaPipe] getImageData blocked (canvas taint):", secErr);
+          resolve(null);
+        }
+      } catch (drawErr) {
+        console.warn("[MediaPipe] drawImage failed:", drawErr);
         resolve(null);
       }
     };
@@ -176,14 +192,17 @@ async function analyzeOnWeb(
   }
 
   const video = document.createElement("video");
-  video.crossOrigin = "anonymous";
+  // crossOrigin must NOT be set for blob: or data: URIs — it causes taint / CORS errors
+  if (videoUri.startsWith("http://") || videoUri.startsWith("https://")) {
+    video.crossOrigin = "anonymous";
+  }
   video.preload = "auto";
   video.muted = true;
   video.playsInline = true;
 
   const loadVideo = new Promise<void>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("Video load timeout")), 20000);
-    video.onloadeddata = () => { clearTimeout(t); resolve(); };
+    video.onloadedmetadata = () => { clearTimeout(t); resolve(); };
     video.onerror = () => { clearTimeout(t); reject(new Error("Video load error")); };
     video.src = videoUri;
     video.load();
@@ -239,9 +258,18 @@ async function analyzeOnWeb(
 
     if (imageData) {
       const { brightness, variance } = pixelBrightnessAndVariance(imageData.data);
-      brightnessValue = Math.min(100, (brightness / 255) * 100);
+      // Apply sRGB gamma correction so perceived brightness matches human vision
+      // Linear 107/255 = 42% → after gamma: ~67% (matches how it looks on screen)
+      const linearNorm = brightness / 255;
+      const perceptual = Math.pow(linearNorm, 1 / 2.2);
+      brightnessValue = Math.min(100, perceptual * 100);
       blurValue = Math.min(100, Math.max(10, (variance / 2500) * 100));
       contrastValue = Math.min(100, variance / 30);
+      if (i === 0 || i === Math.floor(sampleTimes.length / 2)) {
+        console.log(`[MediaPipe] Frame sample t=${t.toFixed(2)}s brightness=${brightnessValue.toFixed(1)} (raw=${brightness.toFixed(0)}/255) blur=${blurValue.toFixed(1)}`);
+      }
+    } else if (i === 0) {
+      console.warn("[MediaPipe] Frame t=0 returned null imageData — canvas taint or seek failed");
     }
 
     try {
@@ -298,6 +326,10 @@ async function analyzeOnWeb(
       motionValue: Math.max(0, 100 - stabilityNow),
     });
   }
+
+  const avgBrightness = frames.reduce((s, f) => s + f.brightnessValue, 0) / frames.length;
+  const handsDetectedPct = Math.round((frames.filter(f => f.handDetected).length / frames.length) * 100);
+  console.log(`[MediaPipe] Analysis done: ${frames.length} frames | avgBrightness=${avgBrightness.toFixed(1)} | handsDetected=${handsDetectedPct}%`);
 
   onProgress?.(95);
   return frames;
