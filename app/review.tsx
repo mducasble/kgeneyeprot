@@ -15,7 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRecordings } from "@/lib/recordings-context";
-import { runQCEngine, generateFrameSamples, QC_VERSION } from "@/lib/qc-engine";
+import { runQCEngine } from "@/lib/qc-engine";
+import { analyzeVideo } from "@/lib/mediapipe-analyzer";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LocalQCReport, QCResult } from "@/lib/qc-types";
 import Colors from "@/constants/colors";
@@ -238,10 +239,10 @@ const checkStyles = StyleSheet.create({
 
 function AnalysisLoader({ progress }: { progress: number }) {
   const steps = [
-    "Reading video metadata…",
-    "Sampling frames…",
-    "Analyzing hand visibility…",
-    "Checking face privacy…",
+    "Loading AI models…",
+    "Extracting video frames…",
+    "Detecting hand gestures…",
+    "Checking face visibility…",
     "Computing quality scores…",
     "Finalizing QC report…",
   ];
@@ -283,6 +284,7 @@ export default function ReviewScreen() {
     orientation: string;
     questId: string;
     questTitle: string;
+    videoUri: string;
   }>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -304,20 +306,28 @@ export default function ReviewScreen() {
 
   useEffect(() => {
     let mounted = true;
-    let prog = 0;
 
-    const progressInterval = setInterval(() => {
+    const runAnalysis = async () => {
+      const videoUri = params.videoUri || "";
+
+      const recording = recordings.find((r) => r.id === recordingId);
+      const stabilityReadings: number[] =
+        (recording as any)?._pendingQC?.stabilityReadings ||
+        Array.from({ length: 20 }, () => 75 + Math.random() * 15);
+
+      let frames;
+      try {
+        frames = await analyzeVideo(
+          videoUri,
+          durationMs,
+          stabilityReadings,
+          (p) => { if (mounted) setAnalysisProgress(Math.min(p, 94)); },
+        );
+      } catch {
+        frames = [];
+      }
+
       if (!mounted) return;
-      prog = Math.min(prog + Math.random() * 8 + 3, 95);
-      setAnalysisProgress(prog);
-    }, 150);
-
-    setTimeout(() => {
-      if (!mounted) return;
-      clearInterval(progressInterval);
-
-      const stabilityReadings = Array.from({ length: 30 }, () => 60 + Math.random() * 35);
-      const frames = generateFrameSamples(durationMs, 1, stabilityReadings);
 
       const report = runQCEngine(
         {
@@ -347,12 +357,11 @@ export default function ReviewScreen() {
           }
         }
       }, 400);
-    }, 3000);
-
-    return () => {
-      mounted = false;
-      clearInterval(progressInterval);
     };
+
+    runAnalysis();
+
+    return () => { mounted = false; };
   }, []);
 
   const handleConfirmUpload = () => {

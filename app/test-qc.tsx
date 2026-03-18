@@ -193,6 +193,7 @@ export default function TestQCScreen() {
         orientation: picked.orientation,
         questId: "qc-test",
         questTitle: "QC Test Upload",
+        videoUri: picked.uri,
       },
     });
   };

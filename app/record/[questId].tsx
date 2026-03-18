@@ -239,6 +239,7 @@ export default function RecordScreen() {
             orientation: recording.deviceOrientation,
             questId: questId || "",
             questTitle: questTitle || "",
+            videoUri: video.uri,
           },
         });
       }

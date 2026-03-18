@@ -47,25 +47,36 @@ A mobile application for collecting real-world video data from users performing 
 
 ### Layer C — Post-Capture QC Pipeline
 - Runs after recording stops, before upload
-- Generates 1fps frame samples with simulated ML analysis
-- Real stability tracking via accelerometer
+- **Real MediaPipe ML analysis on web** (HandLandmarker + FaceDetector via @mediapipe/tasks-vision WASM)
+- On native: architecture ready, uses intelligent simulation until EAS Build with TFLite native
+- Extracts 1 frame/second from video, runs hand + face detection on each frame
+- Real brightness/sharpness computed from pixel data (not simulated)
+- Real stability tracking via accelerometer readings captured during recording
 - Scoring engine with 9 weighted components (0-100)
 - Decision: passed (≥85), passed_with_warning (65-84), blocked (<65)
 
 ### QC Files
 ```
 lib/
-  qc-types.ts        - All QC type definitions (LocalQCReport, QCThresholds, etc.)
-  qc-engine.ts       - Scoring engine (runQCEngine, generateFrameSamples)
+  qc-types.ts           - All QC type definitions (LocalQCReport, QCThresholds, etc.)
+  qc-engine.ts          - Scoring engine (runQCEngine)
+  mediapipe-analyzer.ts - Real MediaPipe frame analysis (web: WASM, native: simulation fallback)
   orientation-service.ts - Accelerometer-based orientation and stability tracking
 ```
 
 ### QC Data Flow
 1. Record screen: accelerometer stability readings collected during recording
-2. On stop: navigate to review with recording params
-3. Review screen: runs QC analysis (3s simulated analysis animation)
+2. On stop: navigate to review with recording params + videoUri
+3. Review screen: calls analyzeVideo() — extracts frames, runs HandLandmarker + FaceDetector
 4. QC report persisted to recordings context
 5. On confirm upload: QC payload included in submission API call
+
+### MediaPipe Integration
+- Package: @mediapipe/tasks-vision (WASM-based, web-first)
+- Models loaded from Google CDN on first use (~11MB WASM + models, cached after)
+- Singleton pattern: HandLandmarker + FaceDetector initialized once, reused
+- Simulated URI detection: skips ML for test/simulated videos, uses intelligent simulation
+- Native path: requires EAS Build with TFLite native backend to activate real detection
 
 ## Project Structure
 ```
