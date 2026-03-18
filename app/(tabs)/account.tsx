@@ -47,12 +47,14 @@ function MenuItem({
   onPress,
   isDark,
   destructive,
+  noBorder,
 }: {
   icon: string;
   label: string;
   onPress: () => void;
   isDark: boolean;
   destructive?: boolean;
+  noBorder?: boolean;
 }) {
   const c = isDark ? Colors.dark : Colors.light;
   const iconColor = destructive ? c.error : c.textSecondary;
@@ -62,7 +64,10 @@ function MenuItem({
     <Pressable
       style={({ pressed }) => [
         styles.menuItem,
-        { backgroundColor: c.card, borderColor: c.border, opacity: pressed ? 0.9 : 1 },
+        noBorder
+          ? { backgroundColor: "transparent", borderWidth: 0 }
+          : { backgroundColor: c.card, borderColor: c.border },
+        { opacity: pressed ? 0.9 : 1 },
       ]}
       onPress={onPress}
     >
@@ -150,6 +155,22 @@ export default function AccountScreen() {
         </View>
 
         <View style={styles.menuSection}>
+          <View style={[styles.devSection, { backgroundColor: "#F59E0B08", borderColor: "#F59E0B30" }]}>
+            <View style={styles.devHeader}>
+              <Ionicons name="code-slash-outline" size={14} color="#F59E0B" />
+              <Text style={styles.devLabel}>Ferramentas de Desenvolvimento</Text>
+            </View>
+            <MenuItem
+              icon="shield-checkmark-outline"
+              label="Testar QC com Vídeo"
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/test-qc");
+              }}
+              isDark={isDark}
+              noBorder
+            />
+          </View>
           <MenuItem
             icon="log-out-outline"
             label="Sign Out"
@@ -211,7 +232,21 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  menuSection: { gap: 2, marginTop: 4 },
+  menuSection: { gap: 10, marginTop: 4 },
+  devSection: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden" as const,
+  },
+  devHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  devLabel: { color: "#F59E0B", fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
   menuItem: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
