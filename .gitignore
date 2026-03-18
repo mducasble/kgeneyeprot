@@ -39,3 +39,6 @@ yarn-error.*
 .vercel
 
 .env
+
+# Persistent server data
+.data/
