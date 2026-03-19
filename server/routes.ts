@@ -2,6 +2,12 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
 import * as crypto from "crypto";
+import {
+  initiateMultipartUpload,
+  getPartPresignedUrl,
+  completeMultipartUpload,
+  abortMultipartUpload,
+} from "./s3-multipart";
 
 const sessions: Map<string, string> = new Map();
 
@@ -181,19 +187,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: "questId and recordingId are required" });
     }
     const submissionId = crypto.randomUUID();
-    res.json({
-      submissionId,
-      questId,
-      recordingId,
-      uploadUrl: `https://mock-s3-bucket.s3.amazonaws.com/uploads/${submissionId}`,
-      status: "pending",
-    });
+    res.json({ submissionId, questId, recordingId, status: "pending" });
   });
 
   app.post("/api/submissions/:id/confirm", (req: Request, res: Response) => {
     const userId = authenticateRequest(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    res.json({ submissionId: req.params.id, status: "uploaded" });
+    const { s3Url } = req.body;
+    res.json({ submissionId: req.params.id, status: "uploaded", s3Url });
+  });
+
+  app.post("/api/uploads/initiate", async (req: Request, res: Response) => {
+    const userId = authenticateRequest(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { s3Key, contentType } = req.body;
+    if (!s3Key || !contentType) {
+      return res.status(400).json({ message: "s3Key and contentType are required" });
+    }
+    try {
+      const result = await initiateMultipartUpload(s3Key, contentType);
+      res.json(result);
+    } catch (err) {
+      console.error("Initiate multipart upload error:", err);
+      res.status(500).json({ message: "Failed to initiate upload" });
+    }
+  });
+
+  app.post("/api/uploads/part-url", async (req: Request, res: Response) => {
+    const userId = authenticateRequest(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { uploadId, s3Key, partNumber } = req.body;
+    if (!uploadId || !s3Key || !partNumber) {
+      return res.status(400).json({ message: "uploadId, s3Key, and partNumber are required" });
+    }
+    try {
+      const presignedUrl = await getPartPresignedUrl(s3Key, uploadId, partNumber);
+      res.json({ presignedUrl });
+    } catch (err) {
+      console.error("Get part URL error:", err);
+      res.status(500).json({ message: "Failed to generate part URL" });
+    }
+  });
+
+  app.post("/api/uploads/complete", async (req: Request, res: Response) => {
+    const userId = authenticateRequest(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { uploadId, s3Key, parts } = req.body;
+    if (!uploadId || !s3Key || !parts) {
+      return res.status(400).json({ message: "uploadId, s3Key, and parts are required" });
+    }
+    try {
+      const location = await completeMultipartUpload(s3Key, uploadId, parts);
+      res.json({ location });
+    } catch (err) {
+      console.error("Complete multipart upload error:", err);
+      res.status(500).json({ message: "Failed to complete upload" });
+    }
+  });
+
+  app.post("/api/uploads/abort", async (req: Request, res: Response) => {
+    const userId = authenticateRequest(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { uploadId, s3Key } = req.body;
+    if (!uploadId || !s3Key) {
+      return res.status(400).json({ message: "uploadId and s3Key are required" });
+    }
+    try {
+      await abortMultipartUpload(s3Key, uploadId);
+      res.json({ aborted: true });
+    } catch (err) {
+      console.error("Abort multipart upload error:", err);
+      res.status(500).json({ message: "Failed to abort upload" });
+    }
   });
 
   const httpServer = createServer(app);

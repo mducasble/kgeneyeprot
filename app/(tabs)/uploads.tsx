@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import type { Recording, UploadStatus } from "@/lib/types";
 import type { UploadSubmissionPayload } from "@/lib/qc-types";
 import { QC_VERSION } from "@/lib/qc-engine";
 import { getApiUrl } from "@/lib/query-client";
-import { fetch } from "expo/fetch";
+import { uploadVideoChunked, type UploadProgress } from "@/lib/upload-service";
 
 const statusConfig: Record<UploadStatus, { icon: string; label: string; color: string }> = {
   queued: { icon: "time-outline", label: "Queued", color: "#F59E0B" },
@@ -34,11 +34,13 @@ function UploadItem({
   isDark,
   onRetry,
   onRemove,
+  progress,
 }: {
   recording: Recording;
   isDark: boolean;
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
+  progress?: UploadProgress;
 }) {
   const c = isDark ? Colors.dark : Colors.light;
   const config = statusConfig[recording.uploadStatus];
@@ -55,6 +57,11 @@ function UploadItem({
       ? Colors.dark.warning
       : Colors.dark.error;
 
+  const isUploading = recording.uploadStatus === "uploading";
+  const uploadPct = progress && progress.totalBytes > 0
+    ? Math.round((progress.bytesUploaded / progress.totalBytes) * 100)
+    : 0;
+
   return (
     <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
       <View style={styles.cardContent}>
@@ -68,7 +75,11 @@ function UploadItem({
           <Text style={[styles.meta, { color: c.textSecondary }]}>{formattedDate}</Text>
           <View style={styles.statusRow}>
             <View style={[styles.statusBadge, { backgroundColor: config.color + "15" }]}>
-              <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
+              <Text style={[styles.statusText, { color: config.color }]}>
+                {isUploading && progress
+                  ? `${uploadPct}%  (${progress.chunkIndex}/${progress.totalChunks})`
+                  : config.label}
+              </Text>
             </View>
             <Text style={[styles.fileSize, { color: c.textTertiary }]}>
               {(recording.fileSize / (1024 * 1024)).toFixed(1)} MB
@@ -82,6 +93,16 @@ function UploadItem({
               </View>
             )}
           </View>
+          {isUploading && (
+            <View style={[styles.progressTrack, { backgroundColor: c.border }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${uploadPct}%` as any, backgroundColor: "#0EA5E9" },
+                ]}
+              />
+            </View>
+          )}
         </View>
       </View>
 
@@ -132,11 +153,13 @@ export default function UploadsScreen() {
   const isDark = colorScheme === "dark";
   const c = isDark ? Colors.dark : Colors.light;
 
+  const [progressMap, setProgressMap] = useState<Record<string, UploadProgress>>({});
+
   const pendingRecordings = recordings.filter(
     (r) => r.uploadStatus !== "uploaded",
   );
 
-  const handleRetry = async (id: string) => {
+  const handleRetry = useCallback(async (id: string) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const recording = recordings.find((r) => r.id === id);
     if (!recording || !token) return;
@@ -145,41 +168,62 @@ export default function UploadsScreen() {
 
     try {
       const baseUrl = getApiUrl();
-      const payload = buildSubmissionPayload(recording);
-      const body = payload
-        ? JSON.stringify({ questId: recording.questId, recordingId: recording.id, qcPayload: payload })
-        : JSON.stringify({ questId: recording.questId, recordingId: recording.id });
 
-      const res = await fetch(new URL("/api/submissions", baseUrl).toString(), {
+      const subRes = await fetch(new URL("/api/submissions", baseUrl).toString(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body,
+        body: JSON.stringify({ questId: recording.questId, recordingId: recording.id }),
       });
+      if (!subRes.ok) throw new Error("Submission creation failed");
+      const subData = await subRes.json();
 
-      if (!res.ok) throw new Error("Submission failed");
-      const data = await res.json();
+      let s3Url: string | undefined;
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (recording.uri && !recording.uri.startsWith("simulated://")) {
+        s3Url = await uploadVideoChunked(
+          recording.uri,
+          recording.questId,
+          recording.id,
+          token,
+          (p) => {
+            setProgressMap((prev) => ({ ...prev, [id]: p }));
+          },
+        );
+      }
 
       const confirmRes = await fetch(
-        new URL(`/api/submissions/${data.submissionId}/confirm`, baseUrl).toString(),
+        new URL(`/api/submissions/${subData.submissionId}/confirm`, baseUrl).toString(),
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ s3Url }),
         },
       );
-
       if (!confirmRes.ok) throw new Error("Confirmation failed");
-      updateUploadStatus(id, "uploaded", data.submissionId);
+
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      updateUploadStatus(id, "uploaded", subData.submissionId);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       updateUploadStatus(id, "failed");
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  };
+  }, [recordings, token, updateUploadStatus]);
 
   const handleRemove = (id: string) => {
     if (Platform.OS === "web") {
@@ -238,6 +282,7 @@ export default function UploadsScreen() {
             isDark={isDark}
             onRetry={handleRetry}
             onRemove={handleRemove}
+            progress={progressMap[item.id]}
           />
         )}
         contentContainerStyle={[
@@ -290,7 +335,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flexDirection: "row" as const,
-    alignItems: "center" as const,
+    alignItems: "flex-start" as const,
     gap: 12,
   },
   statusIcon: {
@@ -326,6 +371,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   qcText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: "hidden" as const,
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+  },
   actions: {
     flexDirection: "row" as const,
     justifyContent: "flex-end" as const,
