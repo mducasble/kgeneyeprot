@@ -1,25 +1,34 @@
 const Colors = {
   primary: "#00D4AA",
   primaryDark: "#00B894",
-  accent: "#0EA5E9",
-  accentLight: "#38BDF8",
+  accent: "#818CF8",
+  accentLight: "#A5B4FC",
+  purple: "#A855F7",
+
+  glass: {
+    card: "rgba(255,255,255,0.04)",
+    cardHover: "rgba(255,255,255,0.07)",
+    border: "rgba(255,255,255,0.10)",
+    borderStrong: "rgba(255,255,255,0.18)",
+    surface: "rgba(14,21,37,0.85)",
+  },
 
   dark: {
-    background: "#0A0E1A",
-    surface: "#131829",
-    surfaceElevated: "#1A2035",
-    card: "#1E2640",
-    border: "#2A3350",
-    borderLight: "#364166",
+    background: "#060812",
+    surface: "#0E1525",
+    surfaceElevated: "#141E33",
+    card: "rgba(255,255,255,0.04)",
+    border: "rgba(255,255,255,0.10)",
+    borderLight: "rgba(255,255,255,0.06)",
 
-    text: "#FFFFFF",
-    textSecondary: "#8B95B0",
-    textTertiary: "#5A6580",
+    text: "#F1F5F9",
+    textSecondary: "#94A3B8",
+    textTertiary: "#475569",
 
-    success: "#22C55E",
-    warning: "#F59E0B",
-    error: "#EF4444",
-    info: "#0EA5E9",
+    success: "#34D399",
+    warning: "#FBBF24",
+    error: "#F87171",
+    info: "#60A5FA",
   },
 
   light: {
