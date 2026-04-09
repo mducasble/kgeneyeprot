@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "4ut7M4sCWULX9SujtCatg"
+uri = "file://PRD.md"
+type = "text"
+title = "KGeN Data Collector App — PRD"
