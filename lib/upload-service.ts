@@ -41,9 +41,9 @@ export async function validateBeforeUpload(
   if (Platform.OS !== "web") {
     try {
       const videoInfo = await FileSystem.getInfoAsync(videoUri);
-      if (!videoInfo.exists) errors.push("Video file not found");
+      if (!videoInfo.exists) warnings.push("Video file could not be verified locally");
     } catch {
-      errors.push("Cannot access video file");
+      // URI format from camera may not be stat-able — let the upload attempt decide
     }
 
     if (session?.imuPath) {
