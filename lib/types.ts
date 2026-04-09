@@ -19,6 +19,19 @@ export interface Quest {
 
 export type UploadStatus = "queued" | "uploading" | "uploaded" | "failed" | "retrying";
 
+export interface SessionData {
+  sessionId: string;
+  imuPath?: string;
+  metadataPath?: string;
+  qcReportPath?: string;
+  imuSampleCount?: number;
+  imuEstimatedHz?: number;
+  sessionStartEpochMs?: number;
+  imuStartEpochMs?: number;
+  videoStartEpochMs?: number;
+  recordingStopEpochMs?: number;
+}
+
 export interface Recording {
   id: string;
   questId: string;
@@ -32,4 +45,13 @@ export interface Recording {
   thumbnailUri?: string;
   qcReport?: LocalQCReport;
   deviceOrientation?: "portrait" | "landscape";
+  sessionId?: string;
+  imuPath?: string;
+  metadataPath?: string;
+  qcReportPath?: string;
+  imuSampleCount?: number;
+  imuEstimatedHz?: number;
+  sessionStartEpochMs?: number;
+  videoStartEpochMs?: number;
+  recordingStopEpochMs?: number;
 }

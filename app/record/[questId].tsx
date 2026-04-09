@@ -17,6 +17,19 @@ import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LiveGuidanceHint } from "@/lib/qc-types";
+import {
+  startIMUCapture,
+  stopIMUCapture,
+  getIMUStats,
+  getIMUFilePath,
+} from "@/lib/imu-service";
+import {
+  createSession,
+  markIMUStart,
+  markVideoStart,
+  markRecordingStop,
+  getSessionTiming,
+} from "@/lib/session-sync-service";
 import Colors from "@/constants/colors";
 
 const REQUIRED_ORIENTATION = DEFAULT_QC_THRESHOLDS.requiredOrientation;
@@ -158,6 +171,7 @@ export default function RecordScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const recordingRef = useRef(false);
+  const sessionRef = useRef<{ sessionId: string; sessionStartEpochMs: number } | null>(null);
 
   const deviceOrientation = useDeviceOrientation();
   const stabilityReadings = useStabilityTracker();
@@ -166,6 +180,7 @@ export default function RecordScreen() {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      stopIMUCapture().catch(() => {});
     };
   }, []);
 
@@ -193,10 +208,22 @@ export default function RecordScreen() {
 
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    const session = createSession();
+    sessionRef.current = session;
+
+    try {
+      await startIMUCapture(session.sessionId);
+      markIMUStart();
+    } catch (err) {
+      console.warn("[IMU] Failed to start IMU capture (non-blocking):", err);
+    }
+
     recordingRef.current = true;
     setIsRecording(true);
     setRecordingTime(0);
     startTimeRef.current = Date.now();
+
+    markVideoStart();
 
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -211,6 +238,12 @@ export default function RecordScreen() {
       const durationMs = Date.now() - startTimeRef.current;
 
       if (video?.uri) {
+        const imuStats = getIMUStats();
+        const timing = getSessionTiming();
+        const sid = sessionRef.current?.sessionId ?? session.sessionId;
+
+        console.log(`[SESSION] Recording complete. Session: ${sid}, IMU samples: ${imuStats.sampleCount}, Hz: ${imuStats.estimatedHz.toFixed(1)}`);
+
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
         const recording = {
           id,
@@ -222,6 +255,12 @@ export default function RecordScreen() {
           createdAt: Date.now(),
           uploadStatus: "queued" as const,
           deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,
+          sessionId: sid,
+          imuSampleCount: imuStats.sampleCount,
+          imuEstimatedHz: imuStats.estimatedHz,
+          sessionStartEpochMs: timing.sessionStartEpochMs,
+          videoStartEpochMs: timing.videoStartEpochMs,
+          recordingStopEpochMs: timing.recordingStopEpochMs,
           _pendingQC: {
             durationMs,
             stabilityReadings: [...stabilityReadings],
@@ -240,6 +279,13 @@ export default function RecordScreen() {
             questId: questId || "",
             questTitle: questTitle || "",
             videoUri: video.uri,
+            sessionId: sid,
+            imuSampleCount: String(imuStats.sampleCount),
+            imuEstimatedHz: String(imuStats.estimatedHz.toFixed(2)),
+            sessionStartMs: String(timing.sessionStartEpochMs),
+            imuStartMs: String(timing.imuStartEpochMs),
+            videoStartMs: String(timing.videoStartEpochMs),
+            recordingStopMs: String(timing.recordingStopEpochMs),
           },
         });
       }
@@ -248,30 +294,50 @@ export default function RecordScreen() {
       cleanupTimer();
       recordingRef.current = false;
       setIsRecording(false);
+      await stopIMUCapture().catch(() => {});
     }
   };
 
   const handleStopRecording = () => {
     if (!cameraRef.current || !recordingRef.current) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    stopIMUCapture().catch((err) => console.warn("[IMU] Stop error:", err));
+    markRecordingStop();
+
     cameraRef.current.stopRecording();
   };
 
   const handleSimulateRecording = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const session = createSession();
+    markIMUStart();
+    markVideoStart();
+
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const durationMs = (Math.floor(Math.random() * 90) + 15) * 1000;
     const fileSize = Math.floor(Math.random() * 50 * 1024 * 1024) + 5 * 1024 * 1024;
+
+    markRecordingStop();
+    const timing = getSessionTiming();
+
     const recording = {
       id,
       questId: questId || "",
       questTitle: questTitle || "Unknown Quest",
-      uri: `file://simulated_${id}.mp4`,
+      uri: `simulated://${id}.mp4`,
       duration: Math.floor(durationMs / 1000),
       fileSize,
       createdAt: Date.now(),
       uploadStatus: "queued" as const,
       deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,
+      sessionId: session.sessionId,
+      imuSampleCount: 0,
+      imuEstimatedHz: 0,
+      sessionStartEpochMs: timing.sessionStartEpochMs,
+      videoStartEpochMs: timing.videoStartEpochMs,
+      recordingStopEpochMs: timing.recordingStopEpochMs,
     };
     addRecording(recording);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -284,6 +350,13 @@ export default function RecordScreen() {
         orientation: recording.deviceOrientation,
         questId: questId || "",
         questTitle: questTitle || "",
+        sessionId: session.sessionId,
+        imuSampleCount: "0",
+        imuEstimatedHz: "0",
+        sessionStartMs: String(timing.sessionStartEpochMs),
+        imuStartMs: String(timing.imuStartEpochMs),
+        videoStartMs: String(timing.videoStartEpochMs),
+        recordingStopMs: String(timing.recordingStopEpochMs),
       },
     });
   };
@@ -368,7 +441,7 @@ export default function RecordScreen() {
               style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]}
               onPress={() => {
                 if (recordingRef.current) {
-                  cameraRef.current?.stopRecording();
+                  handleStopRecording();
                 }
                 router.back();
               }}

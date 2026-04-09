@@ -16,10 +16,8 @@ import { useRecordings } from "@/lib/recordings-context";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import type { Recording, UploadStatus } from "@/lib/types";
-import type { UploadSubmissionPayload } from "@/lib/qc-types";
-import { QC_VERSION } from "@/lib/qc-engine";
 import { getApiUrl } from "@/lib/query-client";
-import { uploadVideoChunked, type UploadProgress } from "@/lib/upload-service";
+import { uploadVideoChunked, validateBeforeUpload, type UploadProgress } from "@/lib/upload-service";
 
 const statusConfig: Record<UploadStatus, { icon: string; label: string; color: string }> = {
   queued: { icon: "time-outline", label: "Queued", color: "#F59E0B" },
@@ -126,24 +124,6 @@ function UploadItem({
   );
 }
 
-function buildSubmissionPayload(recording: Recording): UploadSubmissionPayload | null {
-  if (!recording.qcReport) return null;
-  return {
-    questId: recording.questId,
-    recordingId: recording.id,
-    localQCReport: recording.qcReport,
-    localQCVersion: QC_VERSION,
-    appBuildVersion: "1.0.0",
-    deviceOS: Platform.OS,
-    frameAggregates: {
-      handPresenceRate: recording.qcReport.handPresenceRate,
-      facePresenceRate: recording.qcReport.facePresenceRate,
-      avgBlur: recording.qcReport.blurScore,
-      avgBrightness: recording.qcReport.brightnessScore,
-      avgStability: recording.qcReport.stabilityScore,
-    },
-  };
-}
 
 export default function UploadsScreen() {
   const { recordings, updateUploadStatus, removeRecording } = useRecordings();
@@ -164,6 +144,27 @@ export default function UploadsScreen() {
     const recording = recordings.find((r) => r.id === id);
     if (!recording || !token) return;
 
+    const sessionFiles = recording.sessionId
+      ? {
+          sessionId: recording.sessionId,
+          imuPath: recording.imuPath,
+          metadataPath: recording.metadataPath,
+          qcReportPath: recording.qcReportPath,
+          imuSampleCount: recording.imuSampleCount,
+        }
+      : undefined;
+
+    const validation = await validateBeforeUpload(recording.uri, sessionFiles);
+    if (!validation.valid) {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Upload Blocked",
+        `Cannot upload: ${validation.errors.join(", ")}`,
+        [{ text: "OK" }],
+      );
+      return;
+    }
+
     updateUploadStatus(id, "uploading");
 
     try {
@@ -171,10 +172,7 @@ export default function UploadsScreen() {
 
       const subRes = await fetch(new URL("/api/submissions", baseUrl).toString(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ questId: recording.questId, recordingId: recording.id }),
       });
       if (!subRes.ok) throw new Error("Submission creation failed");
@@ -191,6 +189,7 @@ export default function UploadsScreen() {
           (p) => {
             setProgressMap((prev) => ({ ...prev, [id]: p }));
           },
+          sessionFiles,
         );
       }
 
@@ -198,10 +197,7 @@ export default function UploadsScreen() {
         new URL(`/api/submissions/${subData.submissionId}/confirm`, baseUrl).toString(),
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ s3Url }),
         },
       );

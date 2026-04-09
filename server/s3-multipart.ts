@@ -4,6 +4,7 @@ import {
   UploadPartCommand,
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
+  PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -72,4 +73,16 @@ export async function abortMultipartUpload(
     UploadId: uploadId,
   });
   await s3.send(cmd);
+}
+
+export async function getObjectPresignedUrl(
+  s3Key: string,
+  contentType: string,
+): Promise<string> {
+  const cmd = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: s3Key,
+    ContentType: contentType,
+  });
+  return await getSignedUrl(s3, cmd, { expiresIn: 3600 });
 }

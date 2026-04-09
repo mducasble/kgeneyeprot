@@ -19,6 +19,8 @@ import { runQCEngine } from "@/lib/qc-engine";
 import { analyzeVideo } from "@/lib/mediapipe-analyzer";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LocalQCReport, QCResult } from "@/lib/qc-types";
+import { writeQCReport, writeMetadata, getSessionFilePaths } from "@/lib/session-storage";
+import { getIMUFilePath } from "@/lib/imu-service";
 import Colors from "@/constants/colors";
 
 type CheckStatus = "good" | "warning" | "failed";
@@ -244,9 +246,10 @@ function AnalysisLoader({ progress }: { progress: number }) {
     "Detecting hand gestures…",
     "Checking face visibility…",
     "Computing quality scores…",
+    "Saving session files…",
     "Finalizing QC report…",
   ];
-  const step = Math.min(Math.floor(progress / 17), steps.length - 1);
+  const step = Math.min(Math.floor(progress / 15), steps.length - 1);
 
   return (
     <View style={loaderStyles.container}>
@@ -285,11 +288,18 @@ export default function ReviewScreen() {
     questId: string;
     questTitle: string;
     videoUri: string;
+    sessionId: string;
+    imuSampleCount: string;
+    imuEstimatedHz: string;
+    sessionStartMs: string;
+    imuStartMs: string;
+    videoStartMs: string;
+    recordingStopMs: string;
   }>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const { updateUploadStatus, setQCReport, recordings } = useRecordings();
+  const { updateUploadStatus, setQCReport, setSessionData, recordings } = useRecordings();
 
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [qcReport, setQcReport] = useState<LocalQCReport | null>(null);
@@ -301,6 +311,13 @@ export default function ReviewScreen() {
   const orientation = (params.orientation || "portrait") as "portrait" | "landscape";
   const questId = params.questId || "";
   const questTitle = params.questTitle || "Unknown Quest";
+  const sessionId = params.sessionId || recordingId;
+  const imuSampleCount = Number(params.imuSampleCount || 0);
+  const imuEstimatedHz = Number(params.imuEstimatedHz || 0);
+  const sessionStartMs = Number(params.sessionStartMs || 0);
+  const imuStartMs = Number(params.imuStartMs || 0);
+  const videoStartMs = Number(params.videoStartMs || 0);
+  const recordingStopMs = Number(params.recordingStopMs || 0);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -321,7 +338,7 @@ export default function ReviewScreen() {
           videoUri,
           durationMs,
           stabilityReadings,
-          (p) => { if (mounted) setAnalysisProgress(Math.min(p, 94)); },
+          (p) => { if (mounted) setAnalysisProgress(Math.min(p, 88)); },
         );
       } catch {
         frames = [];
@@ -342,11 +359,87 @@ export default function ReviewScreen() {
         DEFAULT_QC_THRESHOLDS,
       );
 
+      setAnalysisProgress(92);
+
+      if (mounted) {
+        setQCReport(recordingId, report);
+
+        const sessionPaths = await getSessionFilePaths(sessionId).catch(() => ({
+          imuPath: getIMUFilePath(sessionId),
+          metadataPath: "",
+          qcReportPath: "",
+        }));
+
+        const qcReportData = {
+          score: report.readinessScore,
+          recommendation: report.qcResult,
+          warnings: report.warningReasons,
+          blockReasons: report.blockReasons,
+          metrics: {
+            handPresenceRate: report.handPresenceRate,
+            facePresenceRate: report.facePresenceRate,
+            brightnessScore: report.brightnessScore,
+            blurScore: report.blurScore,
+            stabilityScore: report.stabilityScore,
+            sampledFrameCount: report.sampledFrameCount,
+          },
+          qcVersion: report.qcVersion,
+          analyzedFrames: report.sampledFrameCount,
+          timestamp: Date.now(),
+        };
+
+        const metadata = {
+          sessionId,
+          questId,
+          userId: "local",
+          sessionStartEpochMs: sessionStartMs,
+          imuStartEpochMs: imuStartMs,
+          videoStartEpochMs: videoStartMs,
+          recordingStopEpochMs: recordingStopMs,
+          durationMs,
+          imuSampleCount,
+          imuEstimatedHz,
+          deviceModel: "unknown",
+          osName: Platform.OS,
+          osVersion: String(Platform.Version),
+          qcSummary: {
+            result: report.qcResult,
+            readinessScore: report.readinessScore,
+          },
+          warnings: report.warningReasons,
+        };
+
+        let qcReportPath = "";
+        let metadataPath = "";
+
+        try {
+          qcReportPath = await writeQCReport(sessionId, qcReportData as any);
+          metadataPath = await writeMetadata(sessionId, metadata as any);
+        } catch (err) {
+          console.warn("[SESSION] Failed to write session files:", err);
+        }
+
+        if (mounted) {
+          setSessionData(recordingId, {
+            sessionId,
+            imuPath: sessionPaths.imuPath,
+            metadataPath,
+            qcReportPath,
+            imuSampleCount,
+            imuEstimatedHz,
+            sessionStartEpochMs: sessionStartMs,
+            videoStartEpochMs: videoStartMs,
+            recordingStopEpochMs: recordingStopMs,
+          });
+
+          console.log(`[SESSION] Files saved. QC: ${qcReportPath}, Meta: ${metadataPath}, IMU samples: ${imuSampleCount}, Hz: ${imuEstimatedHz}`);
+        }
+      }
+
       setAnalysisProgress(100);
       setTimeout(() => {
         if (!mounted) return;
         setQcReport(report);
-        if (recordingId) setQCReport(recordingId, report);
         if (Platform.OS !== "web") {
           if (report.qcResult === "blocked") {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -512,6 +605,12 @@ export default function ReviewScreen() {
             <StatChip icon="hand-left-outline" label="Hand Visibility" value={`${Math.round(qcReport.handPresenceRate * 100)}%`} />
             <StatChip icon="film-outline" label="Frames Analyzed" value={String(qcReport.sampledFrameCount)} />
             <StatChip icon="speedometer-outline" label="Stability" value={`${Math.round(qcReport.stabilityScore)}/100`} />
+            {imuSampleCount > 0 && (
+              <StatChip icon="pulse-outline" label="IMU Samples" value={`${imuSampleCount}`} />
+            )}
+            {imuEstimatedHz > 0 && (
+              <StatChip icon="radio-outline" label="IMU Rate" value={`${imuEstimatedHz.toFixed(0)}Hz`} />
+            )}
           </View>
         </View>
       </ScrollView>
@@ -659,21 +758,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row" as const,
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    backgroundColor: "#0A0E1A",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: "rgba(10,14,26,0.95)",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
   retakeBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   retakeBtnText: { color: "rgba(255,255,255,0.6)", fontSize: 15, fontFamily: "Inter_600SemiBold" },
   uploadBtn: {
@@ -685,5 +784,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
   },
-  uploadBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  uploadBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
 });

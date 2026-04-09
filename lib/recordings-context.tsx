@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Recording, UploadStatus } from "@/lib/types";
+import type { Recording, UploadStatus, SessionData } from "@/lib/types";
 import type { LocalQCReport } from "@/lib/qc-types";
 
 interface RecordingsContextValue {
@@ -9,6 +9,7 @@ interface RecordingsContextValue {
   removeRecording: (id: string) => void;
   updateUploadStatus: (id: string, status: UploadStatus, submissionId?: string) => void;
   setQCReport: (id: string, report: LocalQCReport) => void;
+  setSessionData: (id: string, data: SessionData) => void;
   pendingUploads: Recording[];
   isLoading: boolean;
 }
@@ -78,6 +79,20 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
+  const setSessionData = useCallback(
+    (id: string, data: SessionData) => {
+      setRecordings((prev) => {
+        const next = prev.map((r) =>
+          r.id === id ? { ...r, ...data } : r,
+        );
+        persist(next);
+        return next;
+      });
+      console.log(`[SESSION] Data saved for recording ${id}:`, data.sessionId);
+    },
+    [persist],
+  );
+
   const pendingUploads = useMemo(
     () =>
       recordings.filter(
@@ -96,10 +111,11 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
       removeRecording,
       updateUploadStatus,
       setQCReport,
+      setSessionData,
       pendingUploads,
       isLoading,
     }),
-    [recordings, addRecording, removeRecording, updateUploadStatus, setQCReport, pendingUploads, isLoading],
+    [recordings, addRecording, removeRecording, updateUploadStatus, setQCReport, setSessionData, pendingUploads, isLoading],
   );
 
   return <RecordingsContext.Provider value={value}>{children}</RecordingsContext.Provider>;

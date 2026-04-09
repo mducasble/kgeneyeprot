@@ -1,0 +1,325 @@
+You are working on an existing React Native (Expo) app called "KGeN Data Collector App".
+
+The app already supports:
+- Quest-based video recording
+- Local QC pipeline using MediaPipe (post-record)
+- Upload queue with S3 multipart uploads
+- Recording metadata and QC scoring
+
+Your task is to EXTEND the existing codebase to support:
+1) IMU full capture (accelerometer + gyroscope)
+2) Session-based time synchronization
+3) Structured session packaging (video + imu + metadata + qc report)
+4) Non-breaking integration with existing QC and upload flow
+
+IMPORTANT:
+- Do NOT rewrite the project
+- Do NOT remove existing QC or upload logic
+- Only ADD new modules and integrate cleanly
+
+--------------------------------------------------
+1) CREATE NEW SERVICE: imu-service.ts
+--------------------------------------------------
+
+Location: lib/imu-service.ts
+
+Responsibilities:
+- Capture accelerometer + gyroscope during recording
+- Target highest possible frequency (aim ~100Hz, but accept real device limits)
+- Store timestamped samples
+- Buffer in memory and flush incrementally to disk
+
+API:
+
+startIMUCapture(sessionId: string)
+stopIMUCapture()
+getIMUStats(): { sampleCount: number; durationMs: number; estimatedHz: number }
+
+Each sample must include:
+{
+  timestampEpochMs: number,
+  relativeMs: number,
+  accel: { x: number, y: number, z: number },
+  gyro: { x: number, y: number, z: number }
+}
+
+Storage:
+- Save as JSONL file:
+  /sessions/{sessionId}/imu.jsonl
+- Use append mode (avoid memory explosion)
+
+Use expo-sensors:
+- Accelerometer
+- Gyroscope
+
+Ensure:
+- unsubscribe on stop
+- no memory leaks
+- safe for long recordings
+
+--------------------------------------------------
+2) CREATE NEW SERVICE: session-sync-service.ts
+--------------------------------------------------
+
+Location: lib/session-sync-service.ts
+
+Purpose:
+Centralize timing across video + IMU + session
+
+API:
+
+createSession(): { sessionId: string, sessionStartEpochMs: number }
+
+markIMUStart()
+markVideoStart()
+markRecordingStop()
+
+getSessionTiming(): {
+  sessionStartEpochMs: number
+  imuStartEpochMs: number
+  videoStartEpochMs: number
+  recordingStopEpochMs: number
+  durationMs: number
+}
+
+Rules:
+- Use Date.now() for all timestamps
+- Capture ALL key events
+- Must be deterministic and serializable
+
+--------------------------------------------------
+3) MODIFY RECORD FLOW (record/[questId].tsx)
+--------------------------------------------------
+
+When user presses START RECORD:
+
+1. Create session:
+   const session = createSession()
+
+2. Start IMU capture:
+   imuService.startIMUCapture(session.sessionId)
+   syncService.markIMUStart()
+
+3. Start video recording:
+   syncService.markVideoStart()
+
+When user presses STOP:
+
+1. Stop video
+2. Stop IMU capture:
+   imuService.stopIMUCapture()
+3. markRecordingStop()
+
+4. Collect stats:
+   imuStats = imuService.getIMUStats()
+   timing = syncService.getSessionTiming()
+
+5. Pass ALL this to review screen
+
+IMPORTANT:
+- IMU must start BEFORE or at same time as video
+- Never start video without IMU active
+
+--------------------------------------------------
+4) CREATE SESSION STORAGE STRUCTURE
+--------------------------------------------------
+
+Create a new helper:
+
+lib/session-storage.ts
+
+Function:
+
+createSessionFolder(sessionId)
+
+Structure:
+
+/sessions/{sessionId}/
+  video.mp4
+  imu.jsonl
+  metadata.json
+  qc_report.json
+
+Responsibilities:
+- create folder
+- move video file into session folder
+- ensure atomic write
+
+--------------------------------------------------
+5) EXTEND METADATA MODEL
+--------------------------------------------------
+
+Modify metadata generation to include:
+
+{
+  sessionId,
+  questId,
+  userId,
+
+  sessionStartEpochMs,
+  imuStartEpochMs,
+  videoStartEpochMs,
+  recordingStopEpochMs,
+  durationMs,
+
+  imuSampleCount,
+  imuEstimatedHz,
+
+  deviceModel,
+  osName,
+  osVersion,
+
+  qcSummary,
+
+  warnings: [],
+}
+
+Store in:
+metadata.json
+
+--------------------------------------------------
+6) SAVE QC REPORT AS FILE
+--------------------------------------------------
+
+After QC analysis:
+
+Save:
+qc_report.json
+
+Include:
+{
+  score,
+  recommendation,
+  warnings,
+  metrics,
+  qcVersion,
+  analyzedFrames,
+  timestamp
+}
+
+--------------------------------------------------
+7) EXTEND UPLOAD SERVICE (NON-BREAKING)
+--------------------------------------------------
+
+Current behavior:
+- Upload only video
+
+New behavior:
+- Upload 3 assets:
+  - video.mp4
+  - imu.jsonl
+  - metadata.json
+  - qc_report.json (optional but recommended)
+
+Approach:
+
+Option A (preferred):
+- Request multiple presigned URLs
+- Upload each file separately
+
+Option B:
+- Zip session folder and upload single file
+
+IMPORTANT:
+- Keep existing upload queue intact
+- Extend upload item model:
+
+{
+  sessionId,
+  files: [video, imu, metadata, qc]
+}
+
+--------------------------------------------------
+8) UPDATE RECORDINGS CONTEXT
+--------------------------------------------------
+
+Add fields:
+
+{
+  sessionId,
+  imuPath,
+  metadataPath,
+  qcReportPath,
+  imuSampleCount,
+  imuEstimatedHz,
+}
+
+Do NOT break existing fields
+
+--------------------------------------------------
+9) ADD BASIC VALIDATION (PRE-UPLOAD)
+--------------------------------------------------
+
+Before upload:
+
+Check:
+- video exists
+- imu file exists
+- metadata exists
+- qc report exists
+- imu sample count > minimum threshold
+
+If invalid:
+- block upload
+- show error
+
+--------------------------------------------------
+10) PERFORMANCE CONSTRAINTS
+--------------------------------------------------
+
+- IMU capture must NOT block UI
+- File writes must be incremental
+- Avoid storing entire IMU array in memory
+- QC must remain responsive
+- Recording must never crash due to sensors
+
+--------------------------------------------------
+11) DEV LOGGING (IMPORTANT)
+--------------------------------------------------
+
+Add logs:
+
+[IMU]
+- start
+- stop
+- sample count
+- estimated Hz
+
+[SYNC]
+- timestamps
+
+[SESSION]
+- folder creation
+- file paths
+
+--------------------------------------------------
+12) DO NOT CHANGE
+--------------------------------------------------
+
+- QC logic (mediapipe-analyzer.ts)
+- qc-engine.ts scoring
+- existing upload queue logic (only extend)
+- navigation structure
+- authentication flow
+
+--------------------------------------------------
+13) FINAL GOAL
+--------------------------------------------------
+
+After implementation, each recording must produce:
+
+A fully structured session:
+
+/sessions/{sessionId}/
+  video.mp4
+  imu.jsonl
+  metadata.json
+  qc_report.json
+
+With synchronized timestamps and reusable IMU data.
+
+This transforms the app from:
+"video recorder with QC"
+
+into:
+"multimodal data capture system for AI training"

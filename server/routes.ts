@@ -7,6 +7,7 @@ import {
   getPartPresignedUrl,
   completeMultipartUpload,
   abortMultipartUpload,
+  getObjectPresignedUrl,
 } from "./s3-multipart";
 
 const sessions: Map<string, string> = new Map();
@@ -258,6 +259,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Abort multipart upload error:", err);
       res.status(500).json({ message: "Failed to abort upload" });
+    }
+  });
+
+  app.post("/api/uploads/presign", async (req: Request, res: Response) => {
+    const userId = authenticateRequest(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { s3Key, contentType } = req.body;
+    if (!s3Key || !contentType) {
+      return res.status(400).json({ message: "s3Key and contentType are required" });
+    }
+    try {
+      const presignedUrl = await getObjectPresignedUrl(s3Key, contentType);
+      res.json({ presignedUrl, s3Key });
+    } catch (err) {
+      console.error("Presign error:", err);
+      res.status(500).json({ message: "Failed to generate presigned URL" });
     }
   });
 
