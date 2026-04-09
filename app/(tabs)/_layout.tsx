@@ -128,6 +128,14 @@ function FloatingTabBar() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarItemStyle: {
+          flex: 1,
+          height: 68,
+          paddingTop: 0,
+          paddingBottom: 0,
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+        },
         tabBarStyle: {
           position: "absolute" as const,
           bottom: tabBottom,
@@ -142,6 +150,7 @@ function FloatingTabBar() {
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.25,
           shadowRadius: 32,
+          overflow: "hidden" as const,
         },
         tabBarBackground: () => (
           <View style={styles.tabBarBackground}>
