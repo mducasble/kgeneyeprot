@@ -459,7 +459,7 @@ export default function ReviewScreen() {
 
   const handleConfirmUpload = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.dismissAll();
+    router.replace("/(tabs)");
   };
 
   const handleRetake = () => {
