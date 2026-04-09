@@ -32,11 +32,13 @@ interface CaptureState {
 }
 
 let captureState: CaptureState | null = null;
+let lastFinalStats: { sampleCount: number; durationMs: number; estimatedHz: number } | null = null;
 
 export async function startIMUCapture(sessionId: string): Promise<void> {
   if (captureState) {
     await stopIMUCapture();
   }
+  lastFinalStats = null;
 
   const dir = `${FileSystem.documentDirectory ?? ""}sessions/${sessionId}/`;
   if (Platform.OS !== "web") {
@@ -111,8 +113,11 @@ export async function stopIMUCapture(): Promise<void> {
 
   const sampleCount = state.samples.length;
   const durationMs = Date.now() - state.startMs;
+  const estimatedHz = durationMs > 0 ? (sampleCount / durationMs) * 1000 : 0;
 
-  console.log(`[IMU] Stopped. Samples: ${sampleCount}, Duration: ${durationMs}ms, Hz: ${sampleCount > 0 ? ((sampleCount / durationMs) * 1000).toFixed(1) : 0}`);
+  lastFinalStats = { sampleCount, durationMs, estimatedHz };
+
+  console.log(`[IMU] Stopped. Samples: ${sampleCount}, Duration: ${durationMs}ms, Hz: ${estimatedHz.toFixed(1)}`);
 
   if (Platform.OS !== "web" && sampleCount > 0) {
     try {
@@ -129,12 +134,16 @@ export async function stopIMUCapture(): Promise<void> {
 
 export function getIMUStats(): { sampleCount: number; durationMs: number; estimatedHz: number } {
   if (!captureState) {
-    return { sampleCount: 0, durationMs: 0, estimatedHz: 0 };
+    return lastFinalStats ?? { sampleCount: 0, durationMs: 0, estimatedHz: 0 };
   }
   const durationMs = Date.now() - captureState.startMs;
   const sampleCount = captureState.samples.length;
   const estimatedHz = durationMs > 0 ? (sampleCount / durationMs) * 1000 : 0;
   return { sampleCount, durationMs, estimatedHz };
+}
+
+export function resetIMUStats(): void {
+  lastFinalStats = null;
 }
 
 export function getIMUFilePath(sessionId: string): string {
