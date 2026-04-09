@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
 import { useRecordings } from "@/lib/recordings-context";
 import { runQCEngine } from "@/lib/qc-engine";
 import { analyzeVideo } from "@/lib/mediapipe-analyzer";
@@ -237,6 +238,206 @@ const checkStyles = StyleSheet.create({
     borderRadius: 8,
   },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+});
+
+function VideoPreview({ uri }: { uri: string }) {
+  const videoRef = useRef<Video>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const isSimulated = !uri || uri.startsWith("simulated://") || uri.startsWith("file://simulated");
+
+  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+    setIsPlaying(status.isPlaying);
+    setPosition(status.positionMillis ?? 0);
+    setDuration(status.durationMillis ?? 0);
+    if (status.didJustFinish) {
+      setIsPlaying(false);
+      videoRef.current?.setPositionAsync(0);
+    }
+  }, []);
+
+  const handleTogglePlay = async () => {
+    if (!videoRef.current || !isLoaded) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (isPlaying) {
+      await videoRef.current.pauseAsync();
+    } else {
+      await videoRef.current.playAsync();
+    }
+  };
+
+  const handleToggleMute = async () => {
+    if (!videoRef.current) return;
+    const next = !isMuted;
+    setIsMuted(next);
+    await videoRef.current.setIsMutedAsync(next);
+  };
+
+  const formatMs = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return `${m}:${(s % 60).toString().padStart(2, "0")}`;
+  };
+
+  const progress = duration > 0 ? position / duration : 0;
+
+  if (isSimulated || hasError) {
+    return (
+      <View style={vpStyles.placeholder}>
+        <Ionicons name="videocam-off-outline" size={32} color="rgba(255,255,255,0.2)" />
+        <Text style={vpStyles.placeholderText}>
+          {isSimulated ? "Gravação simulada — sem prévia de vídeo" : "Não foi possível carregar o vídeo"}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={vpStyles.container}>
+      <Pressable style={vpStyles.videoWrapper} onPress={handleTogglePlay}>
+        <Video
+          ref={videoRef}
+          source={{ uri }}
+          style={vpStyles.video}
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+          isMuted={isMuted}
+          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+          useNativeControls={false}
+        />
+
+        {!isLoaded && (
+          <View style={vpStyles.loadingOverlay}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+          </View>
+        )}
+
+        {isLoaded && !isPlaying && (
+          <View style={vpStyles.playOverlay}>
+            <View style={vpStyles.playButton}>
+              <Ionicons name="play" size={28} color="#fff" />
+            </View>
+          </View>
+        )}
+      </Pressable>
+
+      <View style={vpStyles.controls}>
+        <Text style={vpStyles.timeText}>
+          {formatMs(position)} / {formatMs(duration)}
+        </Text>
+
+        <View style={vpStyles.progressTrack}>
+          <View style={[vpStyles.progressFill, { width: `${progress * 100}%` as any }]} />
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [vpStyles.muteBtn, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={handleToggleMute}
+        >
+          <Ionicons
+            name={isMuted ? "volume-mute-outline" : "volume-high-outline"}
+            size={18}
+            color="rgba(255,255,255,0.6)"
+          />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const vpStyles = StyleSheet.create({
+  container: {
+    borderRadius: 16,
+    overflow: "hidden" as const,
+    backgroundColor: "#000",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  videoWrapper: {
+    aspectRatio: 16 / 9,
+    backgroundColor: "#000",
+    position: "relative" as const,
+  },
+  video: { width: "100%", height: "100%" },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  playButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.4)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  controls: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  timeText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    minWidth: 80,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden" as const,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
+  muteBtn: {
+    width: 32,
+    height: 32,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  placeholder: {
+    aspectRatio: 16 / 9,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    padding: 20,
+  },
+  placeholderText: {
+    color: "rgba(255,255,255,0.25)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center" as const,
+  },
 });
 
 function AnalysisLoader({ progress }: { progress: number }) {
@@ -529,6 +730,8 @@ export default function ReviewScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
       >
+        <VideoPreview uri={params.videoUri || ""} />
+
         <View style={[styles.resultCard, { backgroundColor: resultConfig.bg, borderColor: resultConfig.color + "30" }]}>
           <View style={styles.resultHeader}>
             <Ionicons name={resultConfig.icon as any} size={36} color={resultConfig.color} />
