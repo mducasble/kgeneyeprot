@@ -2,9 +2,11 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs, Icon, Label, Badge } from "expo-router/unstable-native-tabs";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Platform, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRecordings } from "@/lib/recordings-context";
 import Colors from "@/constants/colors";
 
@@ -33,71 +35,220 @@ function NativeTabLayout() {
   );
 }
 
-function ClassicTabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+type TabIconName =
+  | "list"
+  | "list-outline"
+  | "cloud-upload"
+  | "cloud-upload-outline"
+  | "videocam"
+  | "videocam-outline"
+  | "person"
+  | "person-outline";
+
+function FloatingTabIcon({
+  focused,
+  activeIcon,
+  inactiveIcon,
+  badge,
+}: {
+  focused: boolean;
+  activeIcon: TabIconName;
+  inactiveIcon: TabIconName;
+  badge?: number;
+}) {
+  return (
+    <View style={tabIconStyles.wrapper}>
+      {focused && (
+        <View style={tabIconStyles.glow} />
+      )}
+      <View style={[tabIconStyles.iconContainer, focused && tabIconStyles.iconContainerActive]}>
+        <Ionicons
+          name={focused ? activeIcon : inactiveIcon}
+          size={22}
+          color={focused ? Colors.primary : Colors.dark.textTertiary}
+        />
+      </View>
+      {badge !== undefined && badge > 0 && (
+        <View style={tabIconStyles.badge}>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const tabIconStyles = StyleSheet.create({
+  wrapper: {
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    width: 52,
+    height: 52,
+  },
+  glow: {
+    position: "absolute" as const,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    opacity: 0.12,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  iconContainerActive: {
+    backgroundColor: Colors.primary + "18",
+    borderWidth: 1,
+    borderColor: Colors.primary + "30",
+  },
+  badge: {
+    position: "absolute" as const,
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.dark.error,
+    borderWidth: 1.5,
+    borderColor: "#060812",
+  },
+});
+
+function FloatingTabBar() {
+  const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const isIOS = Platform.OS === "ios";
   const { pendingUploads } = useRecordings();
+
+  const tabBottom = isWeb ? 34 : insets.bottom + 12;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: isDark ? Colors.dark.textTertiary : Colors.light.tabIconDefault,
+        tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute" as const,
-          backgroundColor: isIOS ? "transparent" : isDark ? Colors.dark.background : Colors.light.surface,
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: isDark ? Colors.dark.border : Colors.light.border,
+          bottom: tabBottom,
+          left: 40,
+          right: 40,
+          height: 68,
+          borderRadius: 34,
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          shadowColor: Colors.primary,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 32,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView intensity={100} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? Colors.dark.background : Colors.light.surface }]} />
-          ) : null,
+        tabBarBackground: () => (
+          <View style={styles.tabBarBackground}>
+            {isWeb ? (
+              <View style={[StyleSheet.absoluteFill, styles.webBackground]} />
+            ) : (
+              <BlurView
+                intensity={60}
+                tint="dark"
+                style={[StyleSheet.absoluteFill, styles.blurFill]}
+              />
+            )}
+            <LinearGradient
+              colors={[
+                "rgba(255,255,255,0.12)",
+                "rgba(255,255,255,0.04)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.gradientBorder}
+              pointerEvents="none"
+            />
+          </View>
+        ),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Quests",
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <FloatingTabIcon
+              focused={focused}
+              activeIcon="list"
+              inactiveIcon="list-outline"
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="uploads"
         options={{
-          title: "Uploads",
-          tabBarIcon: ({ color, size }) => <Ionicons name="cloud-upload-outline" size={size} color={color} />,
-          tabBarBadge: pendingUploads.length > 0 ? pendingUploads.length : undefined,
+          tabBarIcon: ({ focused }) => (
+            <FloatingTabIcon
+              focused={focused}
+              activeIcon="cloud-upload"
+              inactiveIcon="cloud-upload-outline"
+              badge={pendingUploads.length}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="recordings"
         options={{
-          title: "Recordings",
-          tabBarIcon: ({ color, size }) => <Ionicons name="videocam-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <FloatingTabIcon
+              focused={focused}
+              activeIcon="videocam"
+              inactiveIcon="videocam-outline"
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
-          title: "Account",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <FloatingTabIcon
+              focused={focused}
+              activeIcon="person"
+              inactiveIcon="person-outline"
+            />
+          ),
         }}
       />
     </Tabs>
   );
 }
 
+const styles = StyleSheet.create({
+  tabBarBackground: {
+    flex: 1,
+    borderRadius: 34,
+    overflow: "hidden" as const,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  blurFill: {
+    borderRadius: 34,
+  },
+  webBackground: {
+    backgroundColor: "rgba(6,8,18,0.85)",
+    borderRadius: 34,
+  },
+  gradientBorder: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    borderRadius: 1,
+  },
+});
+
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }
-  return <ClassicTabLayout />;
+  return <FloatingTabBar />;
 }

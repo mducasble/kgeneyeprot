@@ -177,7 +177,7 @@ export default function RecordingsScreen() {
         )}
         contentContainerStyle={[
           styles.list,
-          { paddingBottom: insets.bottom + 90 },
+          { paddingBottom: insets.bottom + 110 + (Platform.OS === "web" ? 34 : 0) },
           recordings.length === 0 && styles.emptyList,
         ]}
         showsVerticalScrollIndicator={false}

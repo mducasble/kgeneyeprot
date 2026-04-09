@@ -176,7 +176,7 @@ export default function QuestsScreen() {
           data={quests}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <QuestCard quest={item} />}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 90 }]}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 + (Platform.OS === "web" ? 34 : 0) }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />

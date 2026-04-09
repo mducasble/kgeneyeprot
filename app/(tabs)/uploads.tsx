@@ -251,7 +251,7 @@ export default function UploadsScreen() {
         )}
         contentContainerStyle={[
           styles.list,
-          { paddingBottom: insets.bottom + 90 },
+          { paddingBottom: insets.bottom + 110 + (Platform.OS === "web" ? 34 : 0) },
           pendingRecordings.length === 0 && styles.emptyList,
         ]}
         showsVerticalScrollIndicator={false}
