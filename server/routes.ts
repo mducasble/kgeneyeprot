@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
 import * as crypto from "crypto";
+import * as path from "path";
+import * as fs from "fs";
 import {
   initiateMultipartUpload,
   getPartPresignedUrl,
@@ -10,7 +12,30 @@ import {
   getObjectPresignedUrl,
 } from "./s3-multipart";
 
-const sessions: Map<string, string> = new Map();
+const SESSIONS_FILE = path.join(process.cwd(), ".data", "sessions.json");
+
+function loadSessions(): Map<string, string> {
+  try {
+    if (!fs.existsSync(SESSIONS_FILE)) return new Map();
+    const raw = fs.readFileSync(SESSIONS_FILE, "utf-8");
+    const obj: Record<string, string> = JSON.parse(raw);
+    return new Map(Object.entries(obj));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveSessions(sessions: Map<string, string>) {
+  try {
+    const dir = path.dirname(SESSIONS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(Object.fromEntries(sessions), null, 2));
+  } catch (e) {
+    console.error("Failed to persist sessions:", e);
+  }
+}
+
+const sessions: Map<string, string> = loadSessions();
 
 const quests = [
   {
@@ -132,6 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await storage.createUser({ username, password: hashedPassword });
     const token = crypto.randomUUID();
     sessions.set(token, user.id);
+    saveSessions(sessions);
     res.json({ token, user: { id: user.id, username: user.username } });
   });
 
@@ -147,6 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     const token = crypto.randomUUID();
     sessions.set(token, user.id);
+    saveSessions(sessions);
     res.json({ token, user: { id: user.id, username: user.username } });
   });
 
@@ -162,6 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
       sessions.delete(authHeader.slice(7));
+      saveSessions(sessions);
     }
     res.json({ message: "Logged out" });
   });
