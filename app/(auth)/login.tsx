@@ -9,9 +9,8 @@ import {
   Image,
   Platform,
   Dimensions,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Link, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -96,8 +95,7 @@ export default function LoginScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-    <View style={styles.root}>
+    <KeyboardAvoidingView behavior="padding" style={styles.root}>
       <LinearGradient
         colors={["#03060F", "#060D1A", "#030609"]}
         locations={[0, 0.5, 1]}
@@ -226,8 +224,7 @@ export default function LoginScreen() {
           </BlurView>
         </View>
       </Animated.View>
-    </View>
-    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
