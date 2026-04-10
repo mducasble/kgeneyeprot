@@ -101,7 +101,7 @@ export default function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      <Animated.View style={[StyleSheet.absoluteFill, orbStyle]} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFill, orbStyle, { pointerEvents: "none" }]}>
         <View style={[styles.orbLayer, styles.orb1a]} />
         <View style={[styles.orbLayer, styles.orb1b]} />
         <View style={[styles.orbLayer, styles.orb1c]} />
