@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, router, useSegments } from "expo-router";
+import { Stack, router, useSegments, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,8 +21,10 @@ SplashScreen.preventAutoHideAsync();
 function useProtectedRoute() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
+    if (!navigationState?.key) return;
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
@@ -32,7 +34,7 @@ function useProtectedRoute() {
     } else if (user && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, segments, navigationState?.key]);
 }
 
 function RootLayoutNav() {
