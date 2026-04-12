@@ -92,12 +92,15 @@ export default function LoginScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  const Container = Platform.OS === "web" ? View : KeyboardAvoidingView;
+
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.root}>
+    <Container {...(Platform.OS !== "web" ? { behavior: "padding" } : {})} style={styles.root}>
       <LinearGradient
         colors={["#03060F", "#060D1A", "#030609"]}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
 
       <Animated.View style={[StyleSheet.absoluteFill, orbStyle, { pointerEvents: "none" }]}>
@@ -222,7 +225,7 @@ export default function LoginScreen() {
           </BlurView>
         </View>
       </Animated.View>
-    </KeyboardAvoidingView>
+    </Container>
   );
 }
 

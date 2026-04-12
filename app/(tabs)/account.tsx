@@ -25,6 +25,7 @@ function StatCard({ icon, value, label, color }: { icon: string; value: string; 
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
+        pointerEvents="none"
       />
       <View style={[statStyles.iconWrap, { backgroundColor: color + "22" }]}>
         <Ionicons name={icon as any} size={17} color={color} />
@@ -96,6 +97,7 @@ export default function AccountScreen() {
             style={StyleSheet.absoluteFill}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
+            pointerEvents="none"
           />
           <View style={styles.topShimmer} />
 
@@ -114,6 +116,7 @@ export default function AccountScreen() {
               <LinearGradient
                 colors={[Colors.primary + "22", Colors.primary + "08"]}
                 style={StyleSheet.absoluteFill}
+                pointerEvents="none"
               />
               <Ionicons name="shield-checkmark" size={11} color={Colors.primary} />
               <Text style={styles.roleText}>Data Collector</Text>
@@ -141,6 +144,7 @@ export default function AccountScreen() {
           <LinearGradient
             colors={["#FBBF2410", "transparent"]}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
           <View style={styles.devHeader}>
             <Ionicons name="code-slash-outline" size={12} color="#FBBF24" />
@@ -168,6 +172,7 @@ export default function AccountScreen() {
           <LinearGradient
             colors={["#F8717118", "#F8717108"]}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
           <View style={[styles.menuIcon, { backgroundColor: "#F8717118" }]}>
             <Ionicons name="log-out-outline" size={16} color="#F87171" />

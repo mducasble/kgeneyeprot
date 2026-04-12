@@ -54,6 +54,7 @@ function RecordingItem({ recording, onDelete }: { recording: Recording; onDelete
           <LinearGradient
             colors={[Colors.primary + "30", "#7C3AED30"]}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
           <Ionicons name="videocam" size={20} color={Colors.primary} />
         </View>
@@ -148,7 +149,7 @@ export default function RecordingsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
-              <LinearGradient colors={[Colors.primary + "25", "#7C3AED20"]} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={[Colors.primary + "25", "#7C3AED20"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
               <Ionicons name="film-outline" size={34} color={Colors.primary} />
             </View>
             <Text style={styles.emptyTitle}>No recordings yet</Text>

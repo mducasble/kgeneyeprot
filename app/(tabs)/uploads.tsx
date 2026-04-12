@@ -55,6 +55,7 @@ function UploadItem({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
       <View style={[styles.cardAccent, { backgroundColor: config.color }]} />
 
@@ -203,6 +204,7 @@ export default function UploadsScreen() {
             <LinearGradient
               colors={[Colors.primary + "28", Colors.primary + "10"]}
               style={StyleSheet.absoluteFill}
+              pointerEvents="none"
             />
             <Ionicons name="refresh" size={14} color={Colors.primary} />
             <Text style={styles.retryAllText}>Retry All</Text>
@@ -225,7 +227,7 @@ export default function UploadsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
-              <LinearGradient colors={[Colors.primary + "25", "#3B82F620"]} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={[Colors.primary + "25", "#3B82F620"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
               <Ionicons name="cloud-done-outline" size={34} color={Colors.primary} />
             </View>
             <Text style={styles.emptyTitle}>All caught up</Text>
