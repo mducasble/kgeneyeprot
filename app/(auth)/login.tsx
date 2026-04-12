@@ -81,7 +81,6 @@ export default function LoginScreen() {
     try {
       await login(username.trim(), password);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.dismissAll();
     } catch (err: any) {
       setError(err.message || "Login failed");
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
