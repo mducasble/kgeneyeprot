@@ -73,7 +73,6 @@ export default function AccountScreen() {
     const doLogout = async () => {
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await logout();
-      router.push("/(auth)/login");
     };
     if (Platform.OS === "web") { doLogout(); return; }
     Alert.alert("Sign Out", "Are you sure?", [
