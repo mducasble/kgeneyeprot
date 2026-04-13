@@ -230,6 +230,14 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
+  const awsVars = ["AWS_S3_BUCKET", "AWS_S3_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"];
+  const missingAws = awsVars.filter((v) => !process.env[v]);
+  if (missingAws.length > 0) {
+    console.warn(`[S3] Missing AWS env vars: ${missingAws.join(", ")} — uploads will fail`);
+  } else {
+    log(`[S3] Configured: bucket=${process.env.AWS_S3_BUCKET} region=${process.env.AWS_S3_REGION}`);
+  }
+
   configureExpoAndLanding(app);
 
   const server = await registerRoutes(app);

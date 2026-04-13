@@ -236,9 +236,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const result = await initiateMultipartUpload(s3Key, contentType);
       res.json(result);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Initiate multipart upload error:", err);
-      res.status(500).json({ message: "Failed to initiate upload" });
+      const awsErr = err as { name?: string; message?: string };
+      const code = awsErr?.name ?? "UnknownError";
+      const detail = awsErr?.message ?? "Failed to initiate upload";
+      res.status(500).json({ message: `S3 error (${code}): ${detail}` });
     }
   });
 
@@ -300,9 +303,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const presignedUrl = await getObjectPresignedUrl(s3Key, contentType);
       res.json({ presignedUrl, s3Key });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Presign error:", err);
-      res.status(500).json({ message: "Failed to generate presigned URL" });
+      const awsErr = err as { name?: string; message?: string };
+      const code = awsErr?.name ?? "UnknownError";
+      const detail = awsErr?.message ?? "Failed to generate presigned URL";
+      res.status(500).json({ message: `S3 error (${code}): ${detail}` });
     }
   });
 
