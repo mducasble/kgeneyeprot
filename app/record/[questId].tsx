@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system/legacy";
 import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
@@ -245,13 +246,32 @@ export default function RecordScreen() {
         console.log(`[SESSION] Recording complete. Session: ${sid}, IMU samples: ${imuStats.sampleCount}, Hz: ${imuStats.estimatedHz.toFixed(1)}`);
 
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+        let persistentUri = video.uri;
+        let actualFileSize = 0;
+        if (Platform.OS !== "web") {
+          try {
+            const videosDir = `${FileSystem.documentDirectory}recordings/`;
+            const dirInfo = await FileSystem.getInfoAsync(videosDir);
+            if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(videosDir, { intermediates: true });
+            const destUri = `${videosDir}${id}.mp4`;
+            await FileSystem.copyAsync({ from: video.uri, to: destUri });
+            persistentUri = destUri;
+            console.log(`[RECORD] Video saved to persistent storage: ${destUri}`);
+            const fileInfo = await FileSystem.getInfoAsync(destUri);
+            actualFileSize = (fileInfo as any).size || 0;
+          } catch (copyErr) {
+            console.warn("[RECORD] Failed to copy to persistent storage, using temp URI:", copyErr);
+          }
+        }
+
         const recording = {
           id,
           questId: questId || "",
           questTitle: questTitle || "Unknown Quest",
-          uri: video.uri,
+          uri: persistentUri,
           duration: Math.max(1, Math.floor(durationMs / 1000)),
-          fileSize: Math.floor(Math.random() * 50 * 1024 * 1024) + 5 * 1024 * 1024,
+          fileSize: actualFileSize > 0 ? actualFileSize : Math.floor(Math.random() * 50 * 1024 * 1024) + 5 * 1024 * 1024,
           createdAt: Date.now(),
           uploadStatus: "queued" as const,
           deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,
@@ -278,7 +298,7 @@ export default function RecordScreen() {
             orientation: recording.deviceOrientation,
             questId: questId || "",
             questTitle: questTitle || "",
-            videoUri: video.uri,
+            videoUri: persistentUri,
             sessionId: sid,
             imuSampleCount: String(imuStats.sampleCount),
             imuEstimatedHz: String(imuStats.estimatedHz.toFixed(2)),
