@@ -16,23 +16,78 @@ export interface IMUSample {
   gyro: { x: number; y: number; z: number };
 }
 
-const SENSOR_INTERVAL_MS = 20;
-const MAX_SAMPLES = 300_000;
+const SENSOR_INTERVAL_MS = 10;
+const TARGET_HZ = 100;
+const MAX_SAMPLES = 600_000;
+const FLUSH_BATCH_SIZE = 500;
 
 interface CaptureState {
   sessionId: string;
   startMs: number;
   filePath: string;
-  samples: IMUSample[];
+  dirPath: string;
+  sampleCount: number;
+  buffer: IMUSample[];
   accelSub: { remove: () => void } | null;
   gyroSub: { remove: () => void } | null;
   captureTimer: ReturnType<typeof setInterval> | null;
   lastAccel: { x: number; y: number; z: number };
   lastGyro: { x: number; y: number; z: number };
+  batchIndex: number;
+  flushing: boolean;
 }
 
 let captureState: CaptureState | null = null;
-let lastFinalStats: { sampleCount: number; durationMs: number; estimatedHz: number } | null = null;
+let lastFinalStats: {
+  sampleCount: number;
+  durationMs: number;
+  estimatedHz: number;
+  targetHz: number;
+  droppedSampleEstimate: number;
+} | null = null;
+
+async function flushBuffer(state: CaptureState): Promise<void> {
+  if (state.buffer.length === 0 || state.flushing) return;
+  state.flushing = true;
+  const batch = state.buffer.splice(0, state.buffer.length);
+  const jsonl = batch.map((s) => JSON.stringify(s)).join("\n") + "\n";
+  try {
+    const batchFile = `${state.dirPath}imu_batch_${state.batchIndex}.jsonl`;
+    await FileSystem.writeAsStringAsync(batchFile, jsonl, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    state.batchIndex++;
+  } catch (err) {
+    console.warn("[IMU] Flush failed:", err);
+  }
+  state.flushing = false;
+}
+
+async function mergeBatchFiles(state: CaptureState): Promise<void> {
+  if (state.batchIndex === 0) return;
+  try {
+    const parts: string[] = [];
+    for (let i = 0; i < state.batchIndex; i++) {
+      const batchFile = `${state.dirPath}imu_batch_${i}.jsonl`;
+      try {
+        const content = await FileSystem.readAsStringAsync(batchFile, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        parts.push(content);
+      } catch {}
+    }
+    await FileSystem.writeAsStringAsync(state.filePath, parts.join(""), {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    for (let i = 0; i < state.batchIndex; i++) {
+      const batchFile = `${state.dirPath}imu_batch_${i}.jsonl`;
+      await FileSystem.deleteAsync(batchFile, { idempotent: true }).catch(() => {});
+    }
+    console.log(`[IMU] Merged ${state.batchIndex} batch files into ${state.filePath}`);
+  } catch (err) {
+    console.warn("[IMU] Merge batch files failed:", err);
+  }
+}
 
 export async function startIMUCapture(sessionId: string): Promise<void> {
   if (captureState) {
@@ -54,12 +109,16 @@ export async function startIMUCapture(sessionId: string): Promise<void> {
     sessionId,
     startMs,
     filePath,
-    samples: [],
+    dirPath: dir,
+    sampleCount: 0,
+    buffer: [],
     accelSub: null,
     gyroSub: null,
     captureTimer: null,
     lastAccel,
     lastGyro,
+    batchIndex: 0,
+    flushing: false,
   };
 
   if (Platform.OS === "web" || !Accelerometer || !Gyroscope) {
@@ -82,17 +141,22 @@ export async function startIMUCapture(sessionId: string): Promise<void> {
   );
 
   captureState.captureTimer = setInterval(() => {
-    if (!captureState || captureState.samples.length >= MAX_SAMPLES) return;
+    if (!captureState || captureState.sampleCount >= MAX_SAMPLES) return;
     const now = Date.now();
-    captureState.samples.push({
+    captureState.buffer.push({
       timestampEpochMs: now,
       relativeMs: now - captureState.startMs,
       accel: { ...captureState.lastAccel },
       gyro: { ...captureState.lastGyro },
     });
+    captureState.sampleCount++;
+
+    if (captureState.buffer.length >= FLUSH_BATCH_SIZE) {
+      flushBuffer(captureState);
+    }
   }, SENSOR_INTERVAL_MS);
 
-  console.log(`[IMU] Started capture for session ${sessionId}`);
+  console.log(`[IMU] Started capture for session ${sessionId} (target ${TARGET_HZ}Hz, interval ${SENSOR_INTERVAL_MS}ms)`);
 }
 
 export async function stopIMUCapture(): Promise<void> {
@@ -111,35 +175,40 @@ export async function stopIMUCapture(): Promise<void> {
     state.gyroSub.remove();
   }
 
-  const sampleCount = state.samples.length;
+  const sampleCount = state.sampleCount;
   const durationMs = Date.now() - state.startMs;
   const estimatedHz = durationMs > 0 ? (sampleCount / durationMs) * 1000 : 0;
+  const expectedSamples = durationMs > 0 ? Math.round((durationMs / 1000) * TARGET_HZ) : 0;
+  const droppedSampleEstimate = Math.max(0, expectedSamples - sampleCount);
 
-  lastFinalStats = { sampleCount, durationMs, estimatedHz };
+  lastFinalStats = { sampleCount, durationMs, estimatedHz, targetHz: TARGET_HZ, droppedSampleEstimate };
 
-  console.log(`[IMU] Stopped. Samples: ${sampleCount}, Duration: ${durationMs}ms, Hz: ${estimatedHz.toFixed(1)}`);
+  console.log(`[IMU] Stopped. Samples: ${sampleCount}, Duration: ${durationMs}ms, Hz: ${estimatedHz.toFixed(1)}, Dropped (est): ${droppedSampleEstimate}`);
 
-  if (Platform.OS !== "web" && sampleCount > 0) {
-    try {
-      const jsonl = state.samples.map((s) => JSON.stringify(s)).join("\n") + "\n";
-      await FileSystem.writeAsStringAsync(state.filePath, jsonl, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      console.log(`[IMU] Wrote ${sampleCount} samples to ${state.filePath}`);
-    } catch (err) {
-      console.warn("[IMU] Failed to write JSONL:", err);
+  if (Platform.OS !== "web") {
+    if (state.buffer.length > 0) {
+      await flushBuffer(state);
     }
+    await mergeBatchFiles(state);
   }
 }
 
-export function getIMUStats(): { sampleCount: number; durationMs: number; estimatedHz: number } {
+export function getIMUStats(): {
+  sampleCount: number;
+  durationMs: number;
+  estimatedHz: number;
+  targetHz: number;
+  droppedSampleEstimate: number;
+} {
   if (!captureState) {
-    return lastFinalStats ?? { sampleCount: 0, durationMs: 0, estimatedHz: 0 };
+    return lastFinalStats ?? { sampleCount: 0, durationMs: 0, estimatedHz: 0, targetHz: TARGET_HZ, droppedSampleEstimate: 0 };
   }
   const durationMs = Date.now() - captureState.startMs;
-  const sampleCount = captureState.samples.length;
+  const sampleCount = captureState.sampleCount;
   const estimatedHz = durationMs > 0 ? (sampleCount / durationMs) * 1000 : 0;
-  return { sampleCount, durationMs, estimatedHz };
+  const expectedSamples = durationMs > 0 ? Math.round((durationMs / 1000) * TARGET_HZ) : 0;
+  const droppedSampleEstimate = Math.max(0, expectedSamples - sampleCount);
+  return { sampleCount, durationMs, estimatedHz, targetHz: TARGET_HZ, droppedSampleEstimate };
 }
 
 export function resetIMUStats(): void {

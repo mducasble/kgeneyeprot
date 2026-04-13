@@ -361,19 +361,28 @@ export default function RecordScreen() {
 
         let persistentUri = video.uri;
         let actualFileSize = 0;
+        const sessionFolderPath = `${FileSystem.documentDirectory}sessions/${sid}/`;
         if (Platform.OS !== "web") {
           try {
-            const videosDir = `${FileSystem.documentDirectory}recordings/`;
-            const dirInfo = await FileSystem.getInfoAsync(videosDir);
-            if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(videosDir, { intermediates: true });
-            const destUri = `${videosDir}${id}.mp4`;
+            await FileSystem.makeDirectoryAsync(sessionFolderPath, { intermediates: true });
+            const destUri = `${sessionFolderPath}video.mp4`;
             await FileSystem.copyAsync({ from: video.uri, to: destUri });
             persistentUri = destUri;
-            console.log(`[RECORD] Video saved to persistent storage: ${destUri}`);
+            console.log(`[RECORD] Video saved to session folder: ${destUri}`);
             const fileInfo = await FileSystem.getInfoAsync(destUri);
             actualFileSize = (fileInfo as any).size || 0;
           } catch (copyErr) {
-            console.warn("[RECORD] Failed to copy to persistent storage, using temp URI:", copyErr);
+            console.warn("[RECORD] Failed to copy to session folder, using temp URI:", copyErr);
+            try {
+              const videosDir = `${FileSystem.documentDirectory}recordings/`;
+              const dirInfo = await FileSystem.getInfoAsync(videosDir);
+              if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(videosDir, { intermediates: true });
+              const fallbackUri = `${videosDir}${id}.mp4`;
+              await FileSystem.copyAsync({ from: video.uri, to: fallbackUri });
+              persistentUri = fallbackUri;
+              const fileInfo = await FileSystem.getInfoAsync(fallbackUri);
+              actualFileSize = (fileInfo as any).size || 0;
+            } catch {}
           }
         }
 
@@ -388,6 +397,7 @@ export default function RecordScreen() {
           uploadStatus: "queued" as const,
           deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,
           sessionId: sid,
+          sessionFolderPath,
           imuSampleCount: imuStats.sampleCount,
           imuEstimatedHz: imuStats.estimatedHz,
           sessionStartEpochMs: timing.sessionStartEpochMs,

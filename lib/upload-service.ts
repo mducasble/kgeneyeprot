@@ -10,7 +10,7 @@ export interface UploadProgress {
   totalChunks: number;
   bytesUploaded: number;
   totalBytes: number;
-  phase: "video" | "imu" | "metadata" | "qc";
+  phase: "video" | "imu" | "metadata" | "qc" | "artifacts";
 }
 
 export interface SessionFileOptions {
@@ -19,6 +19,10 @@ export interface SessionFileOptions {
   metadataPath?: string;
   qcReportPath?: string;
   imuSampleCount?: number;
+  videoTimestampPath?: string;
+  handLandmarksPath?: string;
+  facePresencePath?: string;
+  frameQcMetricsPath?: string;
 }
 
 export interface SessionUploadValidation {
@@ -73,6 +77,33 @@ export async function validateBeforeUpload(
         if (!qcInfo.exists) warnings.push("QC report file not found");
       } catch {
         warnings.push("Cannot access QC report file");
+      }
+    }
+
+    if (session?.videoTimestampPath) {
+      try {
+        const tsInfo = await FileSystem.getInfoAsync(session.videoTimestampPath);
+        if (!tsInfo.exists) warnings.push("Video timestamps file not found");
+      } catch {
+        warnings.push("Cannot access video timestamps file");
+      }
+    }
+
+    const semanticFiles = [
+      { path: session?.handLandmarksPath, name: "hand_landmarks.jsonl" },
+      { path: session?.facePresencePath, name: "face_presence.jsonl" },
+      { path: session?.frameQcMetricsPath, name: "frame_qc_metrics.jsonl" },
+    ];
+    for (const sf of semanticFiles) {
+      if (sf.path) {
+        try {
+          const info = await FileSystem.getInfoAsync(sf.path);
+          if (!info.exists) warnings.push(`Semantic file missing: ${sf.name}`);
+        } catch {
+          warnings.push(`Cannot access semantic file: ${sf.name}`);
+        }
+      } else {
+        warnings.push(`Semantic file not generated: ${sf.name}`);
       }
     }
 
@@ -160,6 +191,31 @@ async function uploadSmallFile(
   return uploadSmallFileWeb(fileUri, s3Key, contentType, token);
 }
 
+async function tryUploadFile(
+  filePath: string | undefined,
+  s3Key: string,
+  contentType: string,
+  token: string,
+  label: string,
+): Promise<boolean> {
+  if (!filePath) return false;
+  try {
+    if (Platform.OS !== "web") {
+      const info = await FileSystem.getInfoAsync(filePath);
+      if (!info.exists) {
+        console.warn(`[UPLOAD] ${label} file not found, skipping`);
+        return false;
+      }
+    }
+    await uploadSmallFile(filePath, s3Key, contentType, token);
+    console.log(`[UPLOAD] ${label} uploaded`);
+    return true;
+  } catch (e) {
+    console.warn(`[UPLOAD] ${label} upload failed (non-blocking):`, e);
+    return false;
+  }
+}
+
 async function uploadVideoNative(
   videoUri: string,
   s3Key: string,
@@ -202,7 +258,7 @@ async function uploadVideoNative(
 
   onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: fileSize, totalBytes: fileSize, phase: "video" });
 
-  const location = `https://${process.env.EXPO_PUBLIC_DOMAIN ? "kaivideo" : "kaivideo"}.s3.us-east-1.amazonaws.com/${s3Key}`;
+  const location = `https://kaivideo.s3.us-east-1.amazonaws.com/${s3Key}`;
   return location;
 }
 
@@ -307,50 +363,20 @@ export async function uploadVideoChunked(
   }
 
   if (sessionFiles && Platform.OS !== "web") {
-    if (sessionFiles.imuPath) {
-      try {
-        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "imu" });
-        await uploadSmallFile(
-          sessionFiles.imuPath,
-          `sessions/${sessionId}/imu.jsonl`,
-          "application/x-ndjson",
-          token,
-        );
-        console.log("[UPLOAD] imu.jsonl uploaded");
-      } catch (e) {
-        console.warn("[UPLOAD] imu.jsonl upload failed (non-blocking):", e);
-      }
-    }
+    onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "imu" });
+    await tryUploadFile(sessionFiles.imuPath, `sessions/${sessionId}/imu.jsonl`, "application/x-ndjson", token, "imu.jsonl");
 
-    if (sessionFiles.metadataPath) {
-      try {
-        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "metadata" });
-        await uploadSmallFile(
-          sessionFiles.metadataPath,
-          `sessions/${sessionId}/metadata.json`,
-          "application/json",
-          token,
-        );
-        console.log("[UPLOAD] metadata.json uploaded");
-      } catch (e) {
-        console.warn("[UPLOAD] metadata.json upload failed (non-blocking):", e);
-      }
-    }
+    onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "metadata" });
+    await tryUploadFile(sessionFiles.metadataPath, `sessions/${sessionId}/metadata.json`, "application/json", token, "metadata.json");
 
-    if (sessionFiles.qcReportPath) {
-      try {
-        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "qc" });
-        await uploadSmallFile(
-          sessionFiles.qcReportPath,
-          `sessions/${sessionId}/qc_report.json`,
-          "application/json",
-          token,
-        );
-        console.log("[UPLOAD] qc_report.json uploaded");
-      } catch (e) {
-        console.warn("[UPLOAD] qc_report.json upload failed (non-blocking):", e);
-      }
-    }
+    onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "qc" });
+    await tryUploadFile(sessionFiles.qcReportPath, `sessions/${sessionId}/qc_report.json`, "application/json", token, "qc_report.json");
+
+    onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "artifacts" });
+    await tryUploadFile(sessionFiles.videoTimestampPath, `sessions/${sessionId}/video_timestamps.jsonl`, "application/x-ndjson", token, "video_timestamps.jsonl");
+    await tryUploadFile(sessionFiles.handLandmarksPath, `sessions/${sessionId}/hand_landmarks.jsonl`, "application/x-ndjson", token, "hand_landmarks.jsonl");
+    await tryUploadFile(sessionFiles.facePresencePath, `sessions/${sessionId}/face_presence.jsonl`, "application/x-ndjson", token, "face_presence.jsonl");
+    await tryUploadFile(sessionFiles.frameQcMetricsPath, `sessions/${sessionId}/frame_qc_metrics.jsonl`, "application/x-ndjson", token, "frame_qc_metrics.jsonl");
   }
 
   return location;

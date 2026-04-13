@@ -5,6 +5,10 @@ function sessionDir(sessionId: string): string {
   return `${FileSystem.documentDirectory ?? ""}sessions/${sessionId}/`;
 }
 
+export function getSessionFolderPath(sessionId: string): string {
+  return sessionDir(sessionId);
+}
+
 export async function createSessionFolder(sessionId: string): Promise<string> {
   const dir = sessionDir(sessionId);
   if (Platform.OS !== "web") {
@@ -12,6 +16,17 @@ export async function createSessionFolder(sessionId: string): Promise<string> {
   }
   console.log(`[SESSION] Folder created: ${dir}`);
   return dir;
+}
+
+export async function copyVideoToSession(sessionId: string, sourceUri: string): Promise<string> {
+  const dir = sessionDir(sessionId);
+  const destPath = `${dir}video.mp4`;
+  if (Platform.OS !== "web") {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    await FileSystem.copyAsync({ from: sourceUri, to: destPath });
+    console.log(`[SESSION] Video copied to session folder: ${destPath}`);
+  }
+  return destPath;
 }
 
 export async function writeMetadata(
@@ -46,13 +61,76 @@ export async function getSessionFilePaths(sessionId: string): Promise<{
   imuPath: string;
   metadataPath: string;
   qcReportPath: string;
+  videoTimestampPath: string;
+  handLandmarksPath: string;
+  facePresencePath: string;
+  frameQcMetricsPath: string;
 }> {
   const dir = sessionDir(sessionId);
   return {
     imuPath: `${dir}imu.jsonl`,
     metadataPath: `${dir}metadata.json`,
     qcReportPath: `${dir}qc_report.json`,
+    videoTimestampPath: `${dir}video_timestamps.jsonl`,
+    handLandmarksPath: `${dir}hand_landmarks.jsonl`,
+    facePresencePath: `${dir}face_presence.jsonl`,
+    frameQcMetricsPath: `${dir}frame_qc_metrics.jsonl`,
   };
+}
+
+const CORE_FILES = ["video.mp4", "imu.jsonl", "metadata.json", "qc_report.json", "video_timestamps.jsonl"];
+const SEMANTIC_FILES = ["hand_landmarks.jsonl", "face_presence.jsonl", "frame_qc_metrics.jsonl"];
+
+const MIN_IMU_HZ_THRESHOLD = 50;
+
+export async function validateSessionPackage(
+  sessionId: string,
+  imuEstimatedHz?: number,
+  frameTimestampCount?: number,
+): Promise<{
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}> {
+  if (Platform.OS === "web") {
+    return { valid: true, errors: [], warnings: [] };
+  }
+
+  const dir = sessionDir(sessionId);
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  for (const file of CORE_FILES) {
+    try {
+      const info = await FileSystem.getInfoAsync(`${dir}${file}`);
+      if (!info.exists) {
+        errors.push(`Core file missing: ${file}`);
+      }
+    } catch {
+      errors.push(`Cannot access core file: ${file}`);
+    }
+  }
+
+  for (const file of SEMANTIC_FILES) {
+    try {
+      const info = await FileSystem.getInfoAsync(`${dir}${file}`);
+      if (!info.exists) {
+        warnings.push(`Semantic file missing: ${file}`);
+      }
+    } catch {
+      warnings.push(`Cannot access semantic file: ${file}`);
+    }
+  }
+
+  if (imuEstimatedHz !== undefined && imuEstimatedHz < MIN_IMU_HZ_THRESHOLD) {
+    warnings.push(`IMU frequency below threshold: ${imuEstimatedHz.toFixed(1)}Hz (min: ${MIN_IMU_HZ_THRESHOLD}Hz)`);
+  }
+
+  if (frameTimestampCount !== undefined && frameTimestampCount === 0) {
+    warnings.push("Frame timestamp count is zero");
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
 }
 
 export async function validateSessionFiles(sessionId: string): Promise<{

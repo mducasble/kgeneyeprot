@@ -30,6 +30,13 @@ export interface SessionData {
   imuStartEpochMs?: number;
   videoStartEpochMs?: number;
   recordingStopEpochMs?: number;
+  sessionFolderPath?: string;
+  videoTimestampPath?: string;
+  handLandmarksPath?: string;
+  facePresencePath?: string;
+  frameQcMetricsPath?: string;
+  frameTimestampCount?: number;
+  semanticArtifactsAvailable?: boolean;
 }
 
 export interface Recording {
@@ -54,4 +61,11 @@ export interface Recording {
   sessionStartEpochMs?: number;
   videoStartEpochMs?: number;
   recordingStopEpochMs?: number;
+  sessionFolderPath?: string;
+  videoTimestampPath?: string;
+  handLandmarksPath?: string;
+  facePresencePath?: string;
+  frameQcMetricsPath?: string;
+  frameTimestampCount?: number;
+  semanticArtifactsAvailable?: boolean;
 }

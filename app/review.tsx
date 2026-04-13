@@ -20,8 +20,9 @@ import { runQCEngine } from "@/lib/qc-engine";
 import { analyzeVideo } from "@/lib/mediapipe-analyzer";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LocalQCReport, QCResult } from "@/lib/qc-types";
-import { writeQCReport, writeMetadata, getSessionFilePaths } from "@/lib/session-storage";
-import { getIMUFilePath } from "@/lib/imu-service";
+import { writeQCReport, writeMetadata, getSessionFilePaths, getSessionFolderPath, validateSessionPackage } from "@/lib/session-storage";
+import { getIMUFilePath, getIMUStats } from "@/lib/imu-service";
+import { writeVideoTimestamps, writeAllSemanticArtifacts } from "@/lib/session-artifacts";
 import Colors from "@/constants/colors";
 
 type CheckStatus = "good" | "warning" | "failed";
@@ -569,7 +570,18 @@ export default function ReviewScreen() {
           imuPath: getIMUFilePath(sessionId),
           metadataPath: "",
           qcReportPath: "",
+          videoTimestampPath: "",
+          handLandmarksPath: "",
+          facePresencePath: "",
+          frameQcMetricsPath: "",
         }));
+
+        const sessionFolderPath = getSessionFolderPath(sessionId);
+        const imuFinalStats = getIMUStats();
+        const imuTargetHz = imuFinalStats.targetHz;
+        const imuDurationMs = imuFinalStats.durationMs;
+        const imuDroppedSampleEstimate = imuFinalStats.droppedSampleEstimate;
+        const estimatedFps = report.fps > 0 ? report.fps : 30;
 
         const qcReportData = {
           score: report.readinessScore,
@@ -589,6 +601,56 @@ export default function ReviewScreen() {
           timestamp: Date.now(),
         };
 
+        let videoTimestampPath = "";
+        let frameTimestampCount = 0;
+        let videoFrameTimestampMode: "native" | "estimated" = "estimated";
+        let handLandmarksPath = "";
+        let facePresencePath = "";
+        let frameQcMetricsPath = "";
+        let semanticArtifactsAvailable = false;
+
+        try {
+          const tsResult = await writeVideoTimestamps(sessionId, videoStartMs, durationMs, estimatedFps);
+          videoTimestampPath = tsResult.path;
+          frameTimestampCount = tsResult.count;
+          videoFrameTimestampMode = tsResult.mode;
+          console.log(`[SESSION] video_timestamps.jsonl written: ${frameTimestampCount} frames`);
+        } catch (err) {
+          console.warn("[SESSION] Failed to write video timestamps:", err);
+        }
+
+        if (frames.length > 0) {
+          try {
+            const semanticPaths = await writeAllSemanticArtifacts(sessionId, frames, videoStartMs, durationMs);
+            handLandmarksPath = semanticPaths.handLandmarksPath;
+            facePresencePath = semanticPaths.facePresencePath;
+            frameQcMetricsPath = semanticPaths.frameQcMetricsPath;
+            semanticArtifactsAvailable = true;
+            console.log("[SESSION] Semantic artifacts written (hand_landmarks, face_presence, frame_qc_metrics)");
+          } catch (err) {
+            console.warn("[SESSION] Failed to write semantic artifacts:", err);
+          }
+        }
+
+        const artifactFiles = [
+          "video.mp4",
+          "imu.jsonl",
+          "metadata.json",
+          "qc_report.json",
+          "video_timestamps.jsonl",
+        ];
+        if (semanticArtifactsAvailable) {
+          artifactFiles.push("hand_landmarks.jsonl", "face_presence.jsonl", "frame_qc_metrics.jsonl");
+        }
+
+        const validationWarnings = [...report.warningReasons];
+        const validation = await validateSessionPackage(sessionId, imuEstimatedHz, frameTimestampCount).catch(() => ({
+          valid: true,
+          errors: [] as string[],
+          warnings: [] as string[],
+        }));
+        validationWarnings.push(...validation.warnings);
+
         const metadata = {
           sessionId,
           questId,
@@ -598,8 +660,14 @@ export default function ReviewScreen() {
           videoStartEpochMs: videoStartMs,
           recordingStopEpochMs: recordingStopMs,
           durationMs,
-          imuSampleCount,
+          imuTargetHz,
           imuEstimatedHz,
+          imuSampleCount,
+          imuDurationMs,
+          imuDroppedSampleEstimate,
+          videoFrameTimestampMode,
+          estimatedFps,
+          frameTimestampCount,
           deviceModel: "unknown",
           osName: Platform.OS,
           osVersion: String(Platform.Version),
@@ -607,7 +675,14 @@ export default function ReviewScreen() {
             result: report.qcResult,
             readinessScore: report.readinessScore,
           },
-          warnings: report.warningReasons,
+          semanticArtifacts: {
+            hasHandLandmarks: !!handLandmarksPath,
+            hasFacePresence: !!facePresencePath,
+            hasFrameQcMetrics: !!frameQcMetricsPath,
+          },
+          sessionFolderPath,
+          artifactFiles,
+          warnings: validationWarnings,
         };
 
         let qcReportPath = "";
@@ -629,11 +704,19 @@ export default function ReviewScreen() {
             imuSampleCount,
             imuEstimatedHz,
             sessionStartEpochMs: sessionStartMs,
+            imuStartEpochMs: imuStartMs,
             videoStartEpochMs: videoStartMs,
             recordingStopEpochMs: recordingStopMs,
+            sessionFolderPath,
+            videoTimestampPath,
+            handLandmarksPath,
+            facePresencePath,
+            frameQcMetricsPath,
+            frameTimestampCount,
+            semanticArtifactsAvailable,
           });
 
-          console.log(`[SESSION] Files saved. QC: ${qcReportPath}, Meta: ${metadataPath}, IMU samples: ${imuSampleCount}, Hz: ${imuEstimatedHz}`);
+          console.log(`[SESSION] All artifacts saved. QC: ${qcReportPath}, Meta: ${metadataPath}, IMU: ${imuSampleCount}@${imuEstimatedHz.toFixed(1)}Hz, Timestamps: ${frameTimestampCount}, Semantic: ${semanticArtifactsAvailable}`);
         }
       }
 

@@ -111,6 +111,34 @@ server/
   storage.ts           - In-memory storage
 ```
 
+## Session Artifact Structure
+Each recording session generates a structured folder at `sessions/{sessionId}/`:
+
+```
+sessions/{sessionId}/
+  video.mp4                  - Recorded video (copied from temp to session folder)
+  imu.jsonl                  - IMU sensor data (accelerometer + gyroscope, ~100Hz target)
+  metadata.json              - Full session metadata with timing, device, QC summary
+  qc_report.json             - QC analysis results (aggregate scores)
+  video_timestamps.jsonl     - Frame timing reference (estimated from duration+FPS)
+  hand_landmarks.jsonl       - Per-frame hand detection data from MediaPipe
+  face_presence.jsonl        - Per-frame face detection data
+  frame_qc_metrics.jsonl     - Per-frame brightness, blur, detection flags
+```
+
+### Artifact Details
+- **imu.jsonl**: Streams at ~100Hz (10ms interval). Fields: `timestampEpochMs`, `relativeMs`, `accel{x,y,z}`, `gyro{x,y,z}`. Written incrementally in batches to avoid memory growth.
+- **video_timestamps.jsonl**: Estimated frame timing (mode: "estimated"). Fields: `frameIndex`, `timestampEpochMs`, `relativeMs`. Generated from video start time + duration + FPS.
+- **hand_landmarks.jsonl**: Derived from MediaPipe analysis frames. Includes bounding-box-derived landmark points per detected hand.
+- **face_presence.jsonl**: Boolean face detection with confidence per analyzed frame.
+- **frame_qc_metrics.jsonl**: Per-frame brightness, blur scores, and detection flags.
+- **metadata.json**: Extended schema with IMU stats (targetHz, estimatedHz, sampleCount, durationMs, droppedSampleEstimate), video frame timestamp metadata, semantic artifact flags, artifact file manifest, and validation warnings.
+
+### Known Limitations
+- Video frame timestamps are **estimated** (not native) — Expo camera API doesn't expose per-frame hardware timestamps. Frame timing is reconstructed from `videoStartEpochMs + (frameIndex * frameDuration)`.
+- IMU frequency depends on device hardware. Target is 100Hz but actual rate varies (typically 50-100Hz on iOS). The true measured rate is reported honestly in metadata.
+- Hand landmarks from MediaPipe WebView bridge provide bounding boxes but limited landmark points (center, corners). Full 21-point landmarks require native MediaPipe integration.
+
 ## API Endpoints
 - POST /api/auth/register - Register new user
 - POST /api/auth/login - Login

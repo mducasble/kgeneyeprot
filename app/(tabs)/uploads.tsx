@@ -141,6 +141,10 @@ export default function UploadsScreen() {
       metadataPath: recording.metadataPath,
       qcReportPath: recording.qcReportPath,
       imuSampleCount: recording.imuSampleCount,
+      videoTimestampPath: recording.videoTimestampPath,
+      handLandmarksPath: recording.handLandmarksPath,
+      facePresencePath: recording.facePresencePath,
+      frameQcMetricsPath: recording.frameQcMetricsPath,
     } : undefined;
 
     const validation = await validateBeforeUpload(recording.uri, sessionFiles);

@@ -1,0 +1,336 @@
+You are working on an existing Expo/React Native app called "KGeN Data Collector App".
+
+The app already supports:
+- quest-based recording
+- local QC scoring
+- MediaPipe-based post-record analysis
+- imu.jsonl generation
+- metadata.json generation
+- qc_report.json generation
+- upload flow
+
+Your task is to EXTEND the existing project to add the missing pieces needed for a stronger multimodal dataset package:
+
+1) improve IMU capture quality
+2) add video frame timestamp tracking
+3) persist MediaPipe semantic outputs as files
+4) create a strict session package structure
+5) extend metadata and validation accordingly
+
+IMPORTANT RULES
+- Do NOT rewrite the app
+- Do NOT remove existing QC logic
+- Do NOT remove existing upload logic
+- Only extend the current implementation
+- Preserve backward compatibility where possible
+
+==================================================
+1. IMU CAPTURE UPGRADE
+==================================================
+
+Current issue:
+- metadata currently shows imuEstimatedHz around 30 Hz
+- this is too low for richer motion analysis
+
+Goal:
+- increase sensor collection frequency as much as realistically possible on device
+- target 100 Hz when supported
+- otherwise capture the highest stable frequency and record the actual measured rate honestly
+
+Tasks:
+- update the IMU service to request the highest available update interval supported by expo-sensors
+- collect both accelerometer and gyroscope
+- keep JSONL output format
+- avoid memory growth by streaming to file incrementally
+- compute:
+  - imuSampleCount
+  - imuEstimatedHz
+  - imuDurationMs
+  - imuDroppedSampleEstimate (best effort)
+
+Add these fields to metadata.json:
+- imuTargetHz
+- imuEstimatedHz
+- imuSampleCount
+- imuDurationMs
+- imuDroppedSampleEstimate
+
+If device cannot reach the requested frequency, do not fake it. Persist the true measured rate.
+
+==================================================
+2. VIDEO FRAME TIMESTAMP TRACKING
+==================================================
+
+Current issue:
+- metadata has session/video start timestamps
+- but there is no per-frame timestamp reference for video alignment
+
+Goal:
+- add a frame timing artifact so downstream processing can align video frames with IMU and MediaPipe output
+
+Create a new file:
+- video_timestamps.jsonl
+
+Each line should represent one sampled or observed frame timing entry:
+{
+  "frameIndex": number,
+  "timestampEpochMs": number,
+  "relativeMs": number
+}
+
+Implementation guidance:
+- if exact native frame timestamps are not available in Expo camera APIs, implement a best-effort frame timeline based on:
+  - videoStartEpochMs
+  - measured duration
+  - measured or assumed FPS
+- store a flag in metadata indicating whether frame timestamps are:
+  - "native"
+  - "estimated"
+
+Add these fields to metadata.json:
+- videoFrameTimestampMode
+- estimatedFps
+- frameTimestampCount
+
+==================================================
+3. MEDIAPIPE SEMANTIC OUTPUT FILES
+==================================================
+
+Current issue:
+- QC report includes summary metrics only
+- semantic outputs from MediaPipe are not being saved as reusable artifacts
+
+Goal:
+- persist structured MediaPipe outputs after review analysis
+
+Create the following files:
+
+A) hand_landmarks.jsonl
+Each line:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "frameIndex": number,
+  "hands": [
+    {
+      "handedness": "left" | "right" | "unknown",
+      "confidence": number,
+      "landmarks": [
+        { "id": number, "x": number, "y": number, "z": number }
+      ]
+    }
+  ]
+}
+
+B) face_presence.jsonl
+Each line:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "frameIndex": number,
+  "faceDetected": boolean,
+  "confidence": number | null
+}
+
+C) frame_qc_metrics.jsonl
+Each line:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "frameIndex": number,
+  "brightnessScore": number,
+  "blurScore": number,
+  "handDetected": boolean,
+  "faceDetected": boolean
+}
+
+Requirements:
+- do not change the current QC summary behavior
+- add these files as extra outputs
+- keep the existing qc_report.json for the aggregate summary
+- reuse existing MediaPipe analysis results where possible
+- avoid rerunning analysis unnecessarily if data already exists in memory
+
+==================================================
+4. SESSION PACKAGE STANDARDIZATION
+==================================================
+
+Current issue:
+- files exist, but the session package needs to be more explicit and consistent
+
+Goal:
+- every recording must generate a structured local session folder
+
+Use this structure:
+
+/sessions/{sessionId}/
+  video.mp4
+  imu.jsonl
+  metadata.json
+  qc_report.json
+  video_timestamps.jsonl
+  hand_landmarks.jsonl
+  face_presence.jsonl
+  frame_qc_metrics.jsonl
+
+Requirements:
+- move or copy the recorded video into this folder
+- ensure all generated files are written into the same session folder
+- update local models and context state to reference the session folder path
+- make session packaging atomic as much as possible
+
+Add to metadata.json:
+- sessionFolderPath
+- artifactFiles: string[]
+
+==================================================
+5. METADATA UPGRADE
+==================================================
+
+Extend metadata.json to include:
+
+{
+  "sessionId": string,
+  "questId": string,
+  "userId": string,
+
+  "sessionStartEpochMs": number,
+  "imuStartEpochMs": number,
+  "videoStartEpochMs": number,
+  "recordingStopEpochMs": number,
+  "durationMs": number,
+
+  "imuTargetHz": number,
+  "imuEstimatedHz": number,
+  "imuSampleCount": number,
+  "imuDurationMs": number,
+  "imuDroppedSampleEstimate": number,
+
+  "videoFrameTimestampMode": "native" | "estimated",
+  "estimatedFps": number,
+  "frameTimestampCount": number,
+
+  "deviceModel": string,
+  "osName": string,
+  "osVersion": string,
+
+  "qcSummary": {
+    "result": string,
+    "readinessScore": number
+  },
+
+  "semanticArtifacts": {
+    "hasHandLandmarks": boolean,
+    "hasFacePresence": boolean,
+    "hasFrameQcMetrics": boolean
+  },
+
+  "sessionFolderPath": string,
+  "artifactFiles": string[],
+  "warnings": string[]
+}
+
+Do not remove existing fields that are already in use.
+
+==================================================
+6. VALIDATION BEFORE UPLOAD
+==================================================
+
+Extend pre-upload validation.
+
+Before upload, verify that the session folder contains:
+- video.mp4
+- imu.jsonl
+- metadata.json
+- qc_report.json
+- video_timestamps.jsonl
+
+Optional but expected if MediaPipe review ran:
+- hand_landmarks.jsonl
+- face_presence.jsonl
+- frame_qc_metrics.jsonl
+
+Validation rules:
+- block upload if core files are missing
+- warn if semantic files are missing
+- warn if imuEstimatedHz is below a configurable threshold
+- warn if frameTimestampCount is zero
+- keep a validation summary in metadata warnings
+
+==================================================
+7. RECORDINGS CONTEXT / LOCAL STATE
+==================================================
+
+Extend the existing recordings context or local recording model.
+
+Add:
+- sessionFolderPath
+- videoTimestampPath
+- handLandmarksPath
+- facePresencePath
+- frameQcMetricsPath
+- imuEstimatedHz
+- frameTimestampCount
+- semanticArtifactsAvailable
+
+Do not break existing screens.
+
+==================================================
+8. UPLOAD FLOW EXTENSION
+==================================================
+
+Current behavior likely centers around video plus metadata/QC.
+
+Extend upload preparation to include all session artifacts.
+
+Preferred behavior:
+- upload all files inside the session folder individually
+- maintain file manifest on the backend or submission payload
+- do not zip unless absolutely necessary
+
+At minimum, prepare uploads for:
+- video.mp4
+- imu.jsonl
+- metadata.json
+- qc_report.json
+- video_timestamps.jsonl
+
+Optional uploads:
+- hand_landmarks.jsonl
+- face_presence.jsonl
+- frame_qc_metrics.jsonl
+
+==================================================
+9. IMPLEMENTATION NOTES
+==================================================
+
+- Be honest about precision limitations
+- If true native frame timestamps are unavailable, store best-effort estimated frame timing
+- Do not claim hardware-grade synchronization if the app cannot guarantee it
+- Preserve the current QC report format
+- Keep JSONL for time-series artifacts
+- Prefer reusable utility functions over duplicating logic
+
+==================================================
+10. DELIVERABLES
+==================================================
+
+Update the codebase to include:
+- IMU frequency upgrade
+- video_timestamps.jsonl generation
+- hand_landmarks.jsonl generation
+- face_presence.jsonl generation
+- frame_qc_metrics.jsonl generation
+- standardized session packaging
+- metadata extension
+- validation extension
+- upload preparation extension
+
+Also update README/documentation with:
+- session artifact structure
+- meaning of each generated file
+- which timestamps are native vs estimated
+- known limitations of Expo regarding precise frame timing
+
+Final result:
+each session must produce a stronger multimodal dataset package suitable for downstream training and analytics.
