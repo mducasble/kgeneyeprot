@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
-import { useKeepAwake } from "expo-keep-awake";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
@@ -265,7 +265,6 @@ function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
 
 export default function RecordScreen() {
   const { questId, questTitle } = useLocalSearchParams<{ questId: string; questTitle: string }>();
-  useKeepAwake();
   const insets = useSafeAreaInsets();
   const { addRecording } = useRecordings();
   const cameraRef = useRef<CameraView>(null);
@@ -288,6 +287,10 @@ export default function RecordScreen() {
   const { hints, liveFrames } = useLiveAnalysis(isRecording);
 
   useEffect(() => {
+    activateKeepAwakeAsync("recording").catch((e) =>
+      console.warn("[KeepAwake] Activate failed:", e),
+    );
+
     if (Platform.OS !== "web") {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch((e) =>
         console.warn("[Orientation] Lock failed:", e),
@@ -297,6 +300,7 @@ export default function RecordScreen() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       stopIMUCapture().catch(() => {});
+      deactivateKeepAwake("recording");
       if (Platform.OS !== "web") {
         ScreenOrientation.unlockAsync().catch(() => {});
       }
