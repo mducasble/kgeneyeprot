@@ -40,10 +40,14 @@ A mobile application for collecting real-world video data from users performing 
 - Orientation gate blocks recording start if device orientation is wrong
 - Pre-capture guide overlay with camera, lighting, face, and hand tips
 
-### Layer B — Live Capture Guidance
-- Runs every 400ms during recording
-- Debounced hints (2s for hands, 1s for face, 2.5s for lighting)
-- Hints: hand visibility, face detected, lighting, stability
+### Layer B — Live Capture Guidance (Real-Time MediaPipe)
+- Captures camera snapshots every 2.5s during recording
+- Sends snapshots to WebView MediaPipe bridge for real hand/face detection
+- Haptic vibration (Warning) + audio alert beep when hand not detected for 3+ seconds
+- Haptic vibration (Error) when face detected for 2+ seconds
+- Alerts throttled to max once per 4 seconds to avoid spam
+- Pulsing animated banner overlay with severity-colored background
+- Uses expo-audio (useAudioPlayer) for alert sound playback
 
 ### Layer C — Post-Capture QC Pipeline
 - Runs after recording stops, before upload

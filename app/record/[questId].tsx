@@ -16,10 +16,16 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo
 import * as FileSystem from "expo-file-system/legacy";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as ScreenOrientation from "expo-screen-orientation";
+import { useAudioPlayer } from "expo-audio";
+import type { AudioPlayer } from "expo-audio";
 import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LiveGuidanceHint } from "@/lib/qc-types";
+import {
+  analyzeViaWebView,
+  isBridgeReady,
+} from "@/lib/webview-mediapipe-bridge";
 import {
   startIMUCapture,
   stopIMUCapture,
@@ -36,6 +42,9 @@ import {
 import Colors from "@/constants/colors";
 
 const REQUIRED_ORIENTATION = DEFAULT_QC_THRESHOLDS.requiredOrientation;
+const LIVE_ANALYSIS_INTERVAL_MS = 2500;
+const NO_HAND_ALERT_THRESHOLD_MS = 3000;
+const FACE_ALERT_THRESHOLD_MS = 2000;
 
 interface LiveFrame {
   handDetected: boolean;
@@ -43,7 +52,13 @@ interface LiveFrame {
   brightness: number;
 }
 
-function useLiveAnalysis(isRecording: boolean): {
+const ALERT_SOUND_URI = "https://cdn.freesound.org/previews/536/536420_4921277-lq.mp3";
+
+function useLiveAnalysis(
+  isRecording: boolean,
+  cameraRef: React.RefObject<CameraView | null>,
+  alertPlayer: AudioPlayer | null,
+): {
   hints: LiveGuidanceHint[];
   liveFrames: LiveFrame[];
 } {
@@ -52,53 +67,91 @@ function useLiveAnalysis(isRecording: boolean): {
 
   const noHandSinceRef = useRef<number | null>(null);
   const faceSinceRef = useRef<number | null>(null);
-  const lowBrightnessSinceRef = useRef<number | null>(null);
+  const analyzingRef = useRef(false);
+  const lastAlertRef = useRef(0);
 
   useEffect(() => {
     if (!isRecording) {
       setHints([]);
       noHandSinceRef.current = null;
       faceSinceRef.current = null;
-      lowBrightnessSinceRef.current = null;
+      analyzingRef.current = false;
       return;
     }
 
-    const interval = setInterval(() => {
-      const frame: LiveFrame = { handDetected: false, faceDetected: false, brightness: 0 };
+    const interval = setInterval(async () => {
+      if (analyzingRef.current) return;
+      if (!cameraRef.current) return;
+
+      let handDetected = false;
+      let faceDetected = false;
+
+      if (Platform.OS !== "web" && isBridgeReady()) {
+        analyzingRef.current = true;
+        try {
+          const photo = await cameraRef.current.takePictureAsync({
+            quality: 0.3,
+            base64: true,
+            skipProcessing: true,
+          });
+          if (photo?.base64) {
+            const results = await analyzeViaWebView([
+              { base64: photo.base64, timestampMs: Date.now() },
+            ]);
+            if (results.length > 0) {
+              handDetected = results[0].handDetected;
+              faceDetected = results[0].faceDetected;
+            }
+          }
+        } catch (e) {
+          console.warn("[LiveAnalysis] Snapshot analysis failed:", e);
+        }
+        analyzingRef.current = false;
+      }
+
+      const frame: LiveFrame = { handDetected, faceDetected, brightness: 0 };
       setLiveFrames((prev) => [...prev.slice(-60), frame]);
 
       const now = Date.now();
       const newHints: LiveGuidanceHint[] = [];
 
-      if (!frame.handDetected) {
+      if (!handDetected) {
         if (!noHandSinceRef.current) noHandSinceRef.current = now;
-        if (now - (noHandSinceRef.current ?? now) > 2000) {
+        if (now - (noHandSinceRef.current ?? now) > NO_HAND_ALERT_THRESHOLD_MS) {
           newHints.push({ type: "hand", message: "Keep your hands visible", severity: "warning" });
+          if (now - lastAlertRef.current > 4000) {
+            lastAlertRef.current = now;
+            if (Platform.OS !== "web") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              if (alertPlayer) {
+                alertPlayer.seekTo(0).then(() => alertPlayer.play()).catch((e: any) =>
+                  console.warn("[Alert] Sound play failed:", e),
+                );
+              }
+            }
+          }
         }
       } else {
         noHandSinceRef.current = null;
       }
 
-      if (frame.faceDetected) {
+      if (faceDetected) {
         if (!faceSinceRef.current) faceSinceRef.current = now;
-        if (now - (faceSinceRef.current ?? now) > 1000) {
+        if (now - (faceSinceRef.current ?? now) > FACE_ALERT_THRESHOLD_MS) {
           newHints.push({ type: "face", message: "Face detected — adjust camera", severity: "error" });
+          if (now - lastAlertRef.current > 4000) {
+            lastAlertRef.current = now;
+            if (Platform.OS !== "web") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+          }
         }
       } else {
         faceSinceRef.current = null;
       }
 
-      if (frame.brightness < 40) {
-        if (!lowBrightnessSinceRef.current) lowBrightnessSinceRef.current = now;
-        if (now - (lowBrightnessSinceRef.current ?? now) > 2500) {
-          newHints.push({ type: "lighting", message: "Improve lighting", severity: "warning" });
-        }
-      } else {
-        lowBrightnessSinceRef.current = null;
-      }
-
       setHints(newHints);
-    }, 400);
+    }, LIVE_ANALYSIS_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [isRecording]);
@@ -240,12 +293,29 @@ const zoomStyles = StyleSheet.create({
 });
 
 function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (hints.length > 0) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.6, duration: 500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [hints.length > 0]);
+
   if (!hints.length) return null;
   const hint = hints[0];
 
   const bgColor = hint.severity === "error"
-    ? "rgba(239,68,68,0.85)"
-    : "rgba(245,158,11,0.85)";
+    ? "rgba(239,68,68,0.92)"
+    : "rgba(245,158,11,0.92)";
 
   const iconMap: Record<string, string> = {
     hand: "hand-left-outline",
@@ -256,10 +326,10 @@ function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
   };
 
   return (
-    <View style={[styles.hintBanner, { backgroundColor: bgColor }]}>
-      <Ionicons name={iconMap[hint.type] as any} size={18} color="#fff" />
+    <Animated.View style={[styles.hintBanner, { backgroundColor: bgColor, opacity: pulseAnim }]}>
+      <Ionicons name={iconMap[hint.type] as any} size={20} color="#fff" />
       <Text style={styles.hintText}>{hint.message}</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -282,9 +352,11 @@ export default function RecordScreen() {
   const recordingRef = useRef(false);
   const sessionRef = useRef<{ sessionId: string; sessionStartEpochMs: number } | null>(null);
 
+  const alertPlayer = useAudioPlayer(ALERT_SOUND_URI);
+
   const deviceOrientation = useDeviceOrientation();
   const stabilityReadings = useStabilityTracker();
-  const { hints, liveFrames } = useLiveAnalysis(isRecording);
+  const { hints, liveFrames } = useLiveAnalysis(isRecording, cameraRef, alertPlayer);
 
   useEffect(() => {
     activateKeepAwakeAsync("recording").catch((e) =>
@@ -712,17 +784,19 @@ const styles = StyleSheet.create({
   hintBanner: {
     position: "absolute" as const,
     top: 100,
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
     zIndex: 10,
   },
-  hintText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
+  hintText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold", flex: 1 },
   precaptureGuide: {
     position: "absolute" as const,
     bottom: 160,
