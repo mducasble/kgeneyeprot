@@ -64,17 +64,10 @@ export function useStabilityTracker() {
 
   useEffect(() => {
     if (Platform.OS === "web") {
-      const mockInterval = setInterval(() => {
-        setStabilityReadings((prev) => {
-          const stability = 70 + Math.random() * 25;
-          return [...prev, stability].slice(-60);
-        });
-      }, 500);
-      return () => clearInterval(mockInterval);
+      return;
     }
 
     let subscription: any;
-    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
 
     (async () => {
       try {
@@ -96,18 +89,12 @@ export function useStabilityTracker() {
           },
         );
       } catch {
-        fallbackInterval = setInterval(() => {
-          setStabilityReadings((prev) => {
-            const s = 70 + Math.random() * 25;
-            return [...prev, s].slice(-60);
-          });
-        }, 500);
+        console.warn("[Stability] Accelerometer not available — no stability data");
       }
     })();
 
     return () => {
       subscription?.remove();
-      if (fallbackInterval !== null) clearInterval(fallbackInterval);
     };
   }, []);
 

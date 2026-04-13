@@ -184,7 +184,7 @@ async function analyzeOnWeb(
   onProgress?: (p: number) => void,
 ): Promise<LocalQCFrameSample[]> {
   if (isSimulatedUri(videoUri)) {
-    return generateSimulatedFrames(durationMs, stabilityData);
+    return generateEmptyFrames();
   }
 
   onProgress?.(2);
@@ -193,8 +193,8 @@ async function analyzeOnWeb(
   onProgress?.(12);
 
   if (!ok || !handLandmarker) {
-    console.warn("[MediaPipe] Falling back to simulation");
-    return generateSimulatedFrames(durationMs, stabilityData);
+    console.warn("[MediaPipe] Init failed — no real data available");
+    return generateEmptyFrames();
   }
 
   const video = document.createElement("video");
@@ -218,7 +218,7 @@ async function analyzeOnWeb(
     await loadVideo;
   } catch (e) {
     console.warn("[MediaPipe] Video load failed:", e);
-    return generateSimulatedFrames(durationMs, stabilityData);
+    return generateEmptyFrames();
   }
 
   onProgress?.(15);
@@ -316,8 +316,6 @@ async function analyzeOnWeb(
       }
     }
 
-    const stabilityNow = avgStability + (Math.random() - 0.5) * 10;
-
     frames.push({
       timestampMs: Math.floor(t * 1000),
       handDetected,
@@ -329,7 +327,7 @@ async function analyzeOnWeb(
       brightnessValue,
       blurValue,
       contrastValue,
-      motionValue: Math.max(0, 100 - stabilityNow),
+      motionValue: avgStability > 0 ? Math.max(0, 100 - avgStability) : 0,
     });
   }
 
@@ -350,46 +348,9 @@ function avg(arr: number[]) {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-function generateSimulatedFrames(
-  durationMs: number,
-  stabilityData: number[],
-): LocalQCFrameSample[] {
-  const totalFrames = Math.max(1, Math.floor(durationMs / 1000));
-  const avgStability = stabilityData.length ? avg(stabilityData) : 80;
-  const frames: LocalQCFrameSample[] = [];
-
-  for (let i = 0; i < totalFrames; i++) {
-    const t = i / totalFrames;
-    const stabilityNow = avgStability + (Math.random() - 0.5) * 20;
-    const handDetected = Math.random() > 0.2;
-    const handCount = handDetected ? (Math.random() > 0.6 ? 2 : 1) : 0;
-    const faceDetected = Math.random() < 0.05;
-
-    frames.push({
-      timestampMs: Math.floor(t * durationMs),
-      handDetected,
-      handCount,
-      handConfidence: handDetected ? 0.7 + Math.random() * 0.3 : 0,
-      handBoundingBoxes: handDetected
-        ? [
-            {
-              x: 0.2 + Math.random() * 0.3,
-              y: 0.3 + Math.random() * 0.3,
-              width: 0.15 + Math.random() * 0.1,
-              height: 0.2 + Math.random() * 0.1,
-            },
-          ]
-        : [],
-      faceDetected,
-      faceConfidence: faceDetected ? 0.6 + Math.random() * 0.4 : 0,
-      brightnessValue: clamp(60 + (Math.random() - 0.5) * 30, 0, 100),
-      blurValue: clamp(stabilityNow * 0.7 + Math.random() * 20, 0, 100),
-      contrastValue: clamp(55 + (Math.random() - 0.5) * 25, 0, 100),
-      motionValue: clamp(100 - stabilityNow + Math.random() * 10, 0, 100),
-    });
-  }
-
-  return frames;
+function generateEmptyFrames(): LocalQCFrameSample[] {
+  console.warn("[MediaPipe] No real analysis available — returning empty frames (no fallback data)");
+  return [];
 }
 
 async function extractFramesForBridge(
@@ -434,24 +395,21 @@ function bridgeResultsToQCFrames(
   const avgStability =
     stabilityReadings.length
       ? stabilityReadings.reduce((a, b) => a + b, 0) / stabilityReadings.length
-      : 75;
+      : 0;
 
-  return results.map((r) => {
-    const stabilityNow = avgStability + (Math.random() - 0.5) * 10;
-    return {
-      timestampMs: r.timestampMs,
-      handDetected: r.handDetected,
-      handCount: r.handCount,
-      handConfidence: r.handConfidence,
-      handBoundingBoxes: [],
-      faceDetected: r.faceDetected,
-      faceConfidence: r.faceConfidence,
-      brightnessValue: 65,
-      blurValue: Math.min(100, Math.max(10, stabilityNow * 0.7)),
-      contrastValue: 60,
-      motionValue: Math.max(0, 100 - stabilityNow),
-    };
-  });
+  return results.map((r) => ({
+    timestampMs: r.timestampMs,
+    handDetected: r.handDetected,
+    handCount: r.handCount,
+    handConfidence: r.handConfidence,
+    handBoundingBoxes: [],
+    faceDetected: r.faceDetected,
+    faceConfidence: r.faceConfidence,
+    brightnessValue: 0,
+    blurValue: avgStability > 0 ? Math.min(100, Math.max(0, avgStability * 0.7)) : 0,
+    contrastValue: 0,
+    motionValue: avgStability > 0 ? Math.max(0, 100 - avgStability) : 0,
+  }));
 }
 
 export async function analyzeVideo(
@@ -464,15 +422,14 @@ export async function analyzeVideo(
     try {
       return await analyzeOnWeb(videoUri, durationMs, stabilityReadings, onProgress);
     } catch (e) {
-      console.warn("[MediaPipe] Web analysis failed, using simulation:", e);
-      return generateSimulatedFrames(durationMs, stabilityReadings);
+      console.warn("[MediaPipe] Web analysis failed — no fallback data:", e);
+      return generateEmptyFrames();
     }
   }
 
-  // Native: use the hidden WebView bridge for real MediaPipe analysis
   if (isSimulatedUri(videoUri)) {
     onProgress?.(90);
-    return generateSimulatedFrames(durationMs, stabilityReadings);
+    return generateEmptyFrames();
   }
 
   try {
@@ -490,8 +447,8 @@ export async function analyzeVideo(
     const frames = await extractFramesForBridge(videoUri, durationMs, onProgress);
 
     if (frames.length === 0) {
-      console.warn("[MediaPipe] No frames extracted, falling back to simulation");
-      return generateSimulatedFrames(durationMs, stabilityReadings);
+      console.warn("[MediaPipe] No frames extracted — no fallback data");
+      return generateEmptyFrames();
     }
 
     onProgress?.(55);
@@ -512,10 +469,10 @@ export async function analyzeVideo(
 
     return bridgeResultsToQCFrames(results, stabilityReadings);
   } catch (e) {
-    console.warn("[MediaPipe] WebView bridge analysis failed, falling back to simulation:", e);
+    console.warn("[MediaPipe] WebView bridge analysis failed — no fallback data:", e);
     onProgress?.(90);
-    return generateSimulatedFrames(durationMs, stabilityReadings);
+    return generateEmptyFrames();
   }
 }
 
-export { generateSimulatedFrames };
+export { generateEmptyFrames };

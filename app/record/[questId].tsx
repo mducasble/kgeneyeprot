@@ -63,11 +63,7 @@ function useLiveAnalysis(isRecording: boolean): {
     }
 
     const interval = setInterval(() => {
-      const handDetected = Math.random() > 0.22;
-      const faceDetected = Math.random() < 0.06;
-      const brightness = 55 + Math.random() * 40;
-
-      const frame: LiveFrame = { handDetected, faceDetected, brightness };
+      const frame: LiveFrame = { handDetected: false, faceDetected: false, brightness: 0 };
       setLiveFrames((prev) => [...prev.slice(-60), frame]);
 
       const now = Date.now();
@@ -392,7 +388,7 @@ export default function RecordScreen() {
           questTitle: questTitle || "Unknown Quest",
           uri: persistentUri,
           duration: Math.max(1, Math.floor(durationMs / 1000)),
-          fileSize: actualFileSize > 0 ? actualFileSize : Math.floor(Math.random() * 50 * 1024 * 1024) + 5 * 1024 * 1024,
+          fileSize: actualFileSize,
           createdAt: Date.now(),
           uploadStatus: "queued" as const,
           deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,
@@ -458,8 +454,8 @@ export default function RecordScreen() {
     markVideoStart();
 
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const durationMs = (Math.floor(Math.random() * 90) + 15) * 1000;
-    const fileSize = Math.floor(Math.random() * 50 * 1024 * 1024) + 5 * 1024 * 1024;
+    const durationMs = 0;
+    const fileSize = 0;
 
     markRecordingStop();
     const timing = getSessionTiming();
@@ -469,8 +465,8 @@ export default function RecordScreen() {
       questId: questId || "",
       questTitle: questTitle || "Unknown Quest",
       uri: `simulated://${id}.mp4`,
-      duration: Math.floor(durationMs / 1000),
-      fileSize,
+      duration: 0,
+      fileSize: 0,
       createdAt: Date.now(),
       uploadStatus: "queued" as const,
       deviceOrientation: deviceOrientation === "landscape" ? "landscape" as const : "portrait" as const,

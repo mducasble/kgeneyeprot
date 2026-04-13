@@ -531,8 +531,7 @@ export default function ReviewScreen() {
 
       const recording = recordings.find((r) => r.id === recordingId);
       const stabilityReadings: number[] =
-        (recording as any)?._pendingQC?.stabilityReadings ||
-        Array.from({ length: 20 }, () => 75 + Math.random() * 15);
+        (recording as any)?._pendingQC?.stabilityReadings || [];
 
       let frames;
       try {
