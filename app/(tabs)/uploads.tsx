@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import { useRecordings } from "@/lib/recordings-context";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
@@ -48,8 +49,13 @@ function UploadItem({
     : qcReport.qcResult === "passed" ? "#34D399"
     : qcReport.qcResult === "passed_with_warning" ? "#FBBF24" : "#F87171";
 
+  const handlePress = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: "/recording-detail", params: { recordingId: recording.id } });
+  };
+
   return (
-    <View style={styles.card}>
+    <Pressable style={({ pressed }) => [styles.card, { opacity: pressed ? 0.88 : 1 }]} onPress={handlePress}>
       <LinearGradient
         colors={[config.color + "0D", "transparent"]}
         start={{ x: 0, y: 0 }}
@@ -95,24 +101,26 @@ function UploadItem({
           )}
         </View>
 
-        {(recording.uploadStatus === "failed" || recording.uploadStatus === "queued") && (
+        {(recording.uploadStatus === "failed" || recording.uploadStatus === "queued") ? (
           <View style={styles.actions}>
             <Pressable
               style={({ pressed }) => [styles.actionBtn, { backgroundColor: Colors.primary + "18", opacity: pressed ? 0.6 : 1 }]}
-              onPress={() => onRetry(recording.id)}
+              onPress={(e) => { e.stopPropagation?.(); onRetry(recording.id); }}
             >
               <Ionicons name="refresh" size={16} color={Colors.primary} />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#F8717118", opacity: pressed ? 0.6 : 1 }]}
-              onPress={() => onRemove(recording.id)}
+              onPress={(e) => { e.stopPropagation?.(); onRemove(recording.id); }}
             >
               <Ionicons name="trash-outline" size={16} color="#F87171" />
             </Pressable>
           </View>
+        ) : (
+          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

@@ -48,6 +48,7 @@ function RootLayoutNav() {
       <Stack.Screen name="quest/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="record/[questId]" options={{ headerShown: false }} />
       <Stack.Screen name="review" options={{ headerShown: false }} />
+      <Stack.Screen name="recording-detail" options={{ headerShown: false }} />
       <Stack.Screen name="test-qc" options={{ headerShown: false }} />
       <Stack.Screen
         name="(auth)"

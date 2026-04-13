@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import { useRecordings } from "@/lib/recordings-context";
 import Colors from "@/constants/colors";
 import { GlassBackground } from "@/components/GlassBackground";
@@ -39,13 +40,19 @@ function RecordingItem({ recording, onDelete }: { recording: Recording; onDelete
   const duration = `${Math.floor(recording.duration / 60)}:${String(Math.floor(recording.duration % 60)).padStart(2, "0")}`;
   const qcColor = recording.qcReport ? qcColors[recording.qcReport.qcResult] : undefined;
 
+  const handlePress = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: "/recording-detail", params: { recordingId: recording.id } });
+  };
+
   return (
-    <View style={styles.card}>
+    <Pressable style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]} onPress={handlePress}>
       <LinearGradient
         colors={[config.color + "10", "transparent"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.cardGradient}
+        pointerEvents="none"
       />
       <View style={[styles.cardAccent, { backgroundColor: config.color }]} />
 
@@ -84,14 +91,17 @@ function RecordingItem({ recording, onDelete }: { recording: Recording; onDelete
           </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.5 : 1 }]}
-          onPress={() => onDelete(recording.id)}
-        >
-          <Ionicons name="trash-outline" size={16} color="#F87171" />
-        </Pressable>
+        <View style={styles.rightCol}>
+          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" style={{ marginBottom: 6 }} />
+          <Pressable
+            style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.5 : 1 }]}
+            onPress={(e) => { e.stopPropagation?.(); onDelete(recording.id); }}
+          >
+            <Ionicons name="trash-outline" size={16} color="#F87171" />
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -230,6 +240,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  rightCol: {
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    gap: 4,
+  },
   deleteBtn: {
     width: 34,
     height: 34,
