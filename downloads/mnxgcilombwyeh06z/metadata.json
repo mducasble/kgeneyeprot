@@ -1,0 +1,20 @@
+{
+  "sessionId": "mnxgcilombwyeh06z",
+  "questId": "quest-001",
+  "userId": "local",
+  "sessionStartEpochMs": 1776100445484,
+  "imuStartEpochMs": 1776100445487,
+  "videoStartEpochMs": 1776100445487,
+  "recordingStopEpochMs": 1776100456793,
+  "durationMs": 11905,
+  "imuSampleCount": 342,
+  "imuEstimatedHz": 30.27,
+  "deviceModel": "unknown",
+  "osName": "ios",
+  "osVersion": "26.3.1",
+  "qcSummary": {
+    "result": "passed",
+    "readinessScore": 88.29650337525577
+  },
+  "warnings": []
+}

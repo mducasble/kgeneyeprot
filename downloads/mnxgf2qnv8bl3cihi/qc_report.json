@@ -1,0 +1,18 @@
+{
+  "score": 67.9360953468814,
+  "recommendation": "blocked",
+  "warnings": [],
+  "blockReasons": [
+    "Hands not visible enough (0% of frames)"
+  ],
+  "metrics": {
+    "handPresenceRate": 0,
+    "facePresenceRate": 0,
+    "brightnessScore": 65,
+    "blurScore": 55.77220420049641,
+    "stabilityScore": 80.14791544719616,
+    "sampledFrameCount": 11
+  },
+  "analyzedFrames": 11,
+  "timestamp": 1776100578217
+}

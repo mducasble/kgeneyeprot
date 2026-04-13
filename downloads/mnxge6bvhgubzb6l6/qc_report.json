@@ -1,0 +1,16 @@
+{
+  "score": 80.21613794548675,
+  "recommendation": "passed_with_warning",
+  "warnings": [],
+  "blockReasons": [],
+  "metrics": {
+    "handPresenceRate": 0.6153846153846154,
+    "facePresenceRate": 0,
+    "brightnessScore": 65,
+    "blurScore": 60.48275903940946,
+    "stabilityScore": 85.72505111978055,
+    "sampledFrameCount": 13
+  },
+  "analyzedFrames": 13,
+  "timestamp": 1776100538357
+}

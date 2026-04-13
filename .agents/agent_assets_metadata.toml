@@ -6,3 +6,9 @@ id = "4ut7M4sCWULX9SujtCatg"
 uri = "file://PRD.md"
 type = "text"
 title = "KGeN Data Collector App — PRD"
+
+[[outputs]]
+id = "9NvvnrG0lBKaAuB3EKGpu"
+uri = "file://s3_sessions_download.tar.gz"
+type = "unspecified"
+title = "S3 Sessions - All Videos + IMU Data (5 sessions, 72MB)"
