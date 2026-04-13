@@ -69,7 +69,7 @@ function useLiveAnalysis(isRecording: boolean): {
       const now = Date.now();
       const newHints: LiveGuidanceHint[] = [];
 
-      if (!handDetected) {
+      if (!frame.handDetected) {
         if (!noHandSinceRef.current) noHandSinceRef.current = now;
         if (now - (noHandSinceRef.current ?? now) > 2000) {
           newHints.push({ type: "hand", message: "Keep your hands visible", severity: "warning" });
@@ -78,7 +78,7 @@ function useLiveAnalysis(isRecording: boolean): {
         noHandSinceRef.current = null;
       }
 
-      if (faceDetected) {
+      if (frame.faceDetected) {
         if (!faceSinceRef.current) faceSinceRef.current = now;
         if (now - (faceSinceRef.current ?? now) > 1000) {
           newHints.push({ type: "face", message: "Face detected — adjust camera", severity: "error" });
@@ -87,7 +87,7 @@ function useLiveAnalysis(isRecording: boolean): {
         faceSinceRef.current = null;
       }
 
-      if (brightness < 40) {
+      if (frame.brightness < 40) {
         if (!lowBrightnessSinceRef.current) lowBrightnessSinceRef.current = now;
         if (now - (lowBrightnessSinceRef.current ?? now) > 2500) {
           newHints.push({ type: "lighting", message: "Improve lighting", severity: "warning" });
