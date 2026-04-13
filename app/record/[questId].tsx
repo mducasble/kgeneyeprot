@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
+import { useKeepAwake } from "expo-keep-awake";
 import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
@@ -267,6 +268,7 @@ function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
 
 export default function RecordScreen() {
   const { questId, questTitle } = useLocalSearchParams<{ questId: string; questTitle: string }>();
+  useKeepAwake();
   const insets = useSafeAreaInsets();
   const { addRecording } = useRecordings();
   const cameraRef = useRef<CameraView>(null);
