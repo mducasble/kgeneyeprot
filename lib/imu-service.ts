@@ -129,32 +129,30 @@ export async function startIMUCapture(sessionId: string): Promise<void> {
   Accelerometer.setUpdateInterval(SENSOR_INTERVAL_MS);
   Gyroscope.setUpdateInterval(SENSOR_INTERVAL_MS);
 
-  captureState.accelSub = Accelerometer.addListener(
-    (data: { x: number; y: number; z: number }) => {
-      if (captureState) captureState.lastAccel = data;
-    },
-  );
   captureState.gyroSub = Gyroscope.addListener(
     (data: { x: number; y: number; z: number }) => {
       if (captureState) captureState.lastGyro = data;
     },
   );
 
-  captureState.captureTimer = setInterval(() => {
-    if (!captureState || captureState.sampleCount >= MAX_SAMPLES) return;
-    const now = Date.now();
-    captureState.buffer.push({
-      timestampEpochMs: now,
-      relativeMs: now - captureState.startMs,
-      accel: { ...captureState.lastAccel },
-      gyro: { ...captureState.lastGyro },
-    });
-    captureState.sampleCount++;
+  captureState.accelSub = Accelerometer.addListener(
+    (data: { x: number; y: number; z: number }) => {
+      if (!captureState || captureState.sampleCount >= MAX_SAMPLES) return;
+      captureState.lastAccel = data;
+      const now = Date.now();
+      captureState.buffer.push({
+        timestampEpochMs: now,
+        relativeMs: now - captureState.startMs,
+        accel: { ...data },
+        gyro: { ...captureState.lastGyro },
+      });
+      captureState.sampleCount++;
 
-    if (captureState.buffer.length >= FLUSH_BATCH_SIZE) {
-      flushBuffer(captureState);
-    }
-  }, SENSOR_INTERVAL_MS);
+      if (captureState.buffer.length >= FLUSH_BATCH_SIZE) {
+        flushBuffer(captureState);
+      }
+    },
+  );
 
   console.log(`[IMU] Started capture for session ${sessionId} (target ${TARGET_HZ}Hz, interval ${SENSOR_INTERVAL_MS}ms)`);
 }
@@ -165,9 +163,6 @@ export async function stopIMUCapture(): Promise<void> {
   const state = captureState;
   captureState = null;
 
-  if (state.captureTimer) {
-    clearInterval(state.captureTimer);
-  }
   if (state.accelSub) {
     state.accelSub.remove();
   }
