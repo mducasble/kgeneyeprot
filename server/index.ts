@@ -235,7 +235,8 @@ function setupErrorHandler(app: express.Application) {
   if (missingAws.length > 0) {
     console.warn(`[S3] Missing AWS env vars: ${missingAws.join(", ")} — uploads will fail`);
   } else {
-    log(`[S3] Configured: bucket=${process.env.AWS_S3_BUCKET} region=${process.env.AWS_S3_REGION}`);
+    const effectiveBucket = process.env.AWS_S3_BUCKET === "kaivoice" ? "kaivideo" : process.env.AWS_S3_BUCKET;
+    log(`[S3] Configured: bucket=${effectiveBucket} region=${process.env.AWS_S3_REGION}`);
   }
 
   configureExpoAndLanding(app);

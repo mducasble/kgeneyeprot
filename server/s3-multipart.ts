@@ -16,7 +16,7 @@ const s3 = new S3Client({
   },
 });
 
-const BUCKET = process.env.AWS_S3_BUCKET!;
+const BUCKET = process.env.AWS_S3_BUCKET === "kaivoice" ? "kaivideo" : process.env.AWS_S3_BUCKET!;
 
 export async function initiateMultipartUpload(
   s3Key: string,
