@@ -173,10 +173,13 @@ export default function UploadsScreen() {
       setProgressMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
       updateUploadStatus(id, "uploaded", subData.submissionId);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      console.error(`[UPLOAD] Failed for ${id}:`, msg);
       setProgressMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
       updateUploadStatus(id, "failed");
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Upload Failed", msg, [{ text: "OK" }]);
     }
   }, [recordings, token, updateUploadStatus]);
 
