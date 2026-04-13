@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import type { LocalQCFrameSample } from "./qc-types";
+import type { LocalQCFrameSample, DetectedHand } from "./qc-types";
 import {
   analyzeViaWebView,
   waitForBridge,
@@ -256,6 +256,7 @@ async function analyzeOnWeb(
     let handCount = 0;
     let handConfidence = 0;
     let handBoundingBoxes: { x: number; y: number; width: number; height: number }[] = [];
+    let hands: DetectedHand[] = [];
     let faceDetected = false;
     let faceConfidence = 0;
     let brightnessValue = 60;
@@ -264,8 +265,6 @@ async function analyzeOnWeb(
 
     if (imageData) {
       const { brightness, variance } = pixelBrightnessAndVariance(imageData.data);
-      // Apply sRGB gamma correction so perceived brightness matches human vision
-      // Linear 107/255 = 42% → after gamma: ~67% (matches how it looks on screen)
       const linearNorm = brightness / 255;
       const perceptual = Math.pow(linearNorm, 1 / 2.2);
       brightnessValue = Math.min(100, perceptual * 100);
@@ -283,22 +282,40 @@ async function analyzeOnWeb(
       handCount = handResult.landmarks.length;
       handDetected = handCount > 0;
 
-      if (handDetected && handResult.handedness.length > 0) {
-        handConfidence = handResult.handedness[0]?.[0]?.score ?? 0.8;
-        handBoundingBoxes = handResult.landmarks.map(
-          (landmarks: { x: number; y: number }[]) => {
-            const xs = landmarks.map((l) => l.x);
-            const ys = landmarks.map((l) => l.y);
-            const minX = Math.min(...xs);
-            const minY = Math.min(...ys);
-            return {
-              x: minX,
-              y: minY,
-              width: Math.max(...xs) - minX,
-              height: Math.max(...ys) - minY,
-            };
-          },
-        );
+      for (let h = 0; h < handCount; h++) {
+        const lm = handResult.landmarks[h];
+        const landmarks21 = lm.map((p: { x: number; y: number; z: number }) => ({
+          x: p.x,
+          y: p.y,
+          z: p.z,
+        }));
+
+        let label: "Left" | "Right" | "Unknown" = "Unknown";
+        let conf = 0;
+        if (handResult.handedness?.[h]?.[0]) {
+          label = (handResult.handedness[h][0].categoryName as "Left" | "Right") || "Unknown";
+          conf = handResult.handedness[h][0].score ?? 0;
+        }
+        if (h === 0) handConfidence = conf;
+
+        const xs = lm.map((p: { x: number }) => p.x);
+        const ys = lm.map((p: { y: number }) => p.y);
+        const minX = Math.min(...xs);
+        const minY = Math.min(...ys);
+        const bbox = {
+          x: minX,
+          y: minY,
+          width: Math.max(...xs) - minX,
+          height: Math.max(...ys) - minY,
+        };
+
+        handBoundingBoxes.push(bbox);
+        hands.push({
+          handedness: label,
+          confidence: conf,
+          landmarks: landmarks21,
+          boundingBox: bbox,
+        });
       }
     } catch (e) {
       console.warn("[MediaPipe] Hand detection error:", e);
@@ -322,6 +339,7 @@ async function analyzeOnWeb(
       handCount,
       handConfidence,
       handBoundingBoxes,
+      hands,
       faceDetected,
       faceConfidence,
       brightnessValue,
@@ -397,19 +415,44 @@ function bridgeResultsToQCFrames(
       ? stabilityReadings.reduce((a, b) => a + b, 0) / stabilityReadings.length
       : 0;
 
-  return results.map((r) => ({
-    timestampMs: r.timestampMs,
-    handDetected: r.handDetected,
-    handCount: r.handCount,
-    handConfidence: r.handConfidence,
-    handBoundingBoxes: [],
-    faceDetected: r.faceDetected,
-    faceConfidence: r.faceConfidence,
-    brightnessValue: 0,
-    blurValue: avgStability > 0 ? Math.min(100, Math.max(0, avgStability * 0.7)) : 0,
-    contrastValue: 0,
-    motionValue: avgStability > 0 ? Math.max(0, 100 - avgStability) : 0,
-  }));
+  return results.map((r) => {
+    const hands: DetectedHand[] = (r.hands || []).filter((h) =>
+      h && Array.isArray(h.landmarks) && h.landmarks.length > 0
+    ).map((h) => {
+      const label = h.handedness;
+      const normalizedHandedness: "Left" | "Right" | "Unknown" =
+        label === "Left" ? "Left" : label === "Right" ? "Right" : "Unknown";
+      return {
+        handedness: normalizedHandedness,
+        confidence: typeof h.confidence === "number" ? clamp(h.confidence, 0, 1) : 0,
+        landmarks: h.landmarks.map((l) => ({
+          x: typeof l.x === "number" ? l.x : 0,
+          y: typeof l.y === "number" ? l.y : 0,
+          z: typeof l.z === "number" ? l.z : 0,
+        })),
+        boundingBox: h.boundingBox ?? { x: 0, y: 0, width: 0, height: 0 },
+      };
+    });
+
+    const handCount = hands.length;
+    const handDetected = handCount > 0;
+    const handConfidence = handDetected ? hands[0].confidence : 0;
+
+    return {
+      timestampMs: r.timestampMs,
+      handDetected,
+      handCount,
+      handConfidence,
+      handBoundingBoxes: hands.map((h) => h.boundingBox),
+      hands,
+      faceDetected: r.faceDetected,
+      faceConfidence: r.faceConfidence,
+      brightnessValue: r.brightnessValue ?? 0,
+      blurValue: r.blurValue ?? 0,
+      contrastValue: r.contrastValue ?? 0,
+      motionValue: avgStability > 0 ? Math.max(0, 100 - avgStability) : 0,
+    };
+  });
 }
 
 export async function analyzeVideo(

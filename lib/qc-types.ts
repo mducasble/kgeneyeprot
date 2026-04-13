@@ -12,12 +12,26 @@ export interface CapturePrecheck {
   failureReasons: string[];
 }
 
+export interface HandLandmarkPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface DetectedHand {
+  handedness: "Left" | "Right" | "Unknown";
+  confidence: number;
+  landmarks: HandLandmarkPoint[];
+  boundingBox: { x: number; y: number; width: number; height: number };
+}
+
 export interface LocalQCFrameSample {
   timestampMs: number;
   handDetected: boolean;
   handCount: number;
   handConfidence: number;
   handBoundingBoxes: Array<{ x: number; y: number; width: number; height: number }>;
+  hands: DetectedHand[];
   faceDetected: boolean;
   faceConfidence: number;
   brightnessValue: number;

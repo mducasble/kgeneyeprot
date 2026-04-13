@@ -3,13 +3,30 @@ export type WebViewFrameInput = {
   timestampMs: number;
 };
 
+export type WebViewHandLandmark = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+export type WebViewHandResult = {
+  handedness: "Left" | "Right" | "Unknown";
+  confidence: number;
+  landmarks: WebViewHandLandmark[];
+  boundingBox: { x: number; y: number; width: number; height: number };
+};
+
 export type WebViewFrameResult = {
   timestampMs: number;
   handDetected: boolean;
   handCount: number;
   handConfidence: number;
+  hands: WebViewHandResult[];
   faceDetected: boolean;
   faceConfidence: number;
+  brightnessValue: number;
+  blurValue: number;
+  contrastValue: number;
 };
 
 type BridgeFn = (frames: WebViewFrameInput[]) => Promise<WebViewFrameResult[]>;

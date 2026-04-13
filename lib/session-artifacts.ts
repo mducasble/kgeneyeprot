@@ -68,19 +68,17 @@ export async function writeHandLandmarks(
     const relativeMs = frame.timestampMs;
     const hands: HandLandmarkEntry["hands"] = [];
 
-    if (frame.handDetected && frame.handBoundingBoxes.length > 0) {
-      for (let h = 0; h < Math.min(frame.handCount, frame.handBoundingBoxes.length); h++) {
-        const box = frame.handBoundingBoxes[h];
-        const cx = box.x + box.width / 2;
-        const cy = box.y + box.height / 2;
+    if (frame.hands && frame.hands.length > 0) {
+      for (const hand of frame.hands) {
         hands.push({
-          handedness: "unknown",
-          confidence: frame.handConfidence,
-          landmarks: [
-            { id: 0, x: cx, y: cy, z: 0 },
-            { id: 5, x: box.x, y: box.y, z: 0 },
-            { id: 17, x: box.x + box.width, y: box.y + box.height, z: 0 },
-          ],
+          handedness: hand.handedness === "Left" ? "left" : hand.handedness === "Right" ? "right" : "unknown",
+          confidence: hand.confidence,
+          landmarks: hand.landmarks.map((lm, idx) => ({
+            id: idx,
+            x: lm.x,
+            y: lm.y,
+            z: lm.z,
+          })),
         });
       }
     }

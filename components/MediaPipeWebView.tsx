@@ -68,6 +68,31 @@ async function init() {
   rn({ type: 'ERROR', message: 'MediaPipe init failed on both CDNs' });
 }
 
+function pixelStats(imageData) {
+  const data = imageData.data;
+  const total = data.length / 4;
+  const step = Math.max(1, Math.floor(total / 2000));
+  let sum = 0, count = 0;
+  for (let i = 0; i < data.length; i += 4 * step) {
+    sum += data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+    count++;
+  }
+  const mean = count > 0 ? sum / count : 128;
+  let varSum = 0;
+  for (let i = 0; i < data.length; i += 4 * step) {
+    const lum = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+    varSum += (lum - mean) * (lum - mean);
+  }
+  const variance = count > 0 ? varSum / count : 1000;
+  const linearNorm = mean / 255;
+  const perceptual = Math.pow(linearNorm, 1 / 2.2);
+  return {
+    brightness: Math.min(100, perceptual * 100),
+    blur: Math.min(100, Math.max(10, (variance / 2500) * 100)),
+    contrast: Math.min(100, variance / 30)
+  };
+}
+
 function analyzeFrame(base64Jpeg, timestampMs) {
   return new Promise(resolve => {
     const img = new Image();
@@ -76,7 +101,17 @@ function analyzeFrame(base64Jpeg, timestampMs) {
       canvas.height = img.naturalHeight;
       ctx.drawImage(img, 0, 0);
 
+      let brightnessValue = 0, blurValue = 0, contrastValue = 0;
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const stats = pixelStats(imageData);
+        brightnessValue = stats.brightness;
+        blurValue = stats.blur;
+        contrastValue = stats.contrast;
+      } catch(e) {}
+
       let handDetected = false, handCount = 0, handConfidence = 0;
+      let hands = [];
       let faceDetected = false, faceConfidence = 0;
 
       if (handLandmarker) {
@@ -84,8 +119,30 @@ function analyzeFrame(base64Jpeg, timestampMs) {
           const r = handLandmarker.detect(canvas);
           handCount = r.landmarks ? r.landmarks.length : 0;
           handDetected = handCount > 0;
-          if (handDetected && r.handedness && r.handedness[0]) {
-            handConfidence = r.handedness[0][0] ? r.handedness[0][0].score : 0.8;
+
+          for (let h = 0; h < handCount; h++) {
+            const lm = r.landmarks[h];
+            const landmarks21 = lm.map(p => ({ x: p.x, y: p.y, z: p.z }));
+
+            let label = 'Unknown';
+            let conf = 0;
+            if (r.handedness && r.handedness[h] && r.handedness[h][0]) {
+              label = r.handedness[h][0].categoryName || 'Unknown';
+              conf = r.handedness[h][0].score || 0;
+            }
+            if (h === 0) handConfidence = conf;
+
+            const xs = lm.map(p => p.x);
+            const ys = lm.map(p => p.y);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const bbox = {
+              x: minX, y: minY,
+              width: Math.max(...xs) - minX,
+              height: Math.max(...ys) - minY
+            };
+
+            hands.push({ handedness: label, confidence: conf, landmarks: landmarks21, boundingBox: bbox });
           }
         } catch(e) {}
       }
@@ -101,10 +158,18 @@ function analyzeFrame(base64Jpeg, timestampMs) {
         } catch(e) {}
       }
 
-      resolve({ timestampMs, handDetected, handCount, handConfidence, faceDetected, faceConfidence });
+      resolve({
+        timestampMs, handDetected, handCount, handConfidence, hands,
+        faceDetected, faceConfidence,
+        brightnessValue, blurValue, contrastValue
+      });
     };
     img.onerror = () => {
-      resolve({ timestampMs, handDetected: false, handCount: 0, handConfidence: 0, faceDetected: false, faceConfidence: 0 });
+      resolve({
+        timestampMs, handDetected: false, handCount: 0, handConfidence: 0, hands: [],
+        faceDetected: false, faceConfidence: 0,
+        brightnessValue: 0, blurValue: 0, contrastValue: 0
+      });
     };
     img.src = 'data:image/jpeg;base64,' + base64Jpeg;
   });

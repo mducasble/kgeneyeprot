@@ -47,36 +47,43 @@ A mobile application for collecting real-world video data from users performing 
 
 ### Layer C — Post-Capture QC Pipeline
 - Runs after recording stops, before upload
-- **Real MediaPipe ML analysis on web** (HandLandmarker + FaceDetector via @mediapipe/tasks-vision WASM)
-- On native: architecture ready, uses intelligent simulation until EAS Build with TFLite native
-- Extracts 1 frame/second from video, runs hand + face detection on each frame
-- Real brightness/sharpness computed from pixel data (not simulated)
-- Real stability tracking via accelerometer readings captured during recording
+- **Real MediaPipe ML analysis** (HandLandmarker + FaceLandmarker via @mediapipe/tasks-vision)
+- **Full 21-point hand landmarks** per hand (x/y/z for WRIST through PINKY_TIP) on both web and native paths
+- Web: direct WASM analysis; Native: WebView bridge extracts JPEG frames → sends to hidden WebView for MediaPipe analysis
+- Pixel brightness/blur/contrast computed from actual image data
+- Stability tracking via accelerometer readings captured during recording
 - Scoring engine with 9 weighted components (0-100)
 - Decision: passed (≥85), passed_with_warning (65-84), blocked (<65)
 
 ### QC Files
 ```
 lib/
-  qc-types.ts           - All QC type definitions (LocalQCReport, QCThresholds, etc.)
-  qc-engine.ts          - Scoring engine (runQCEngine)
-  mediapipe-analyzer.ts - Real MediaPipe frame analysis (web: WASM, native: simulation fallback)
-  orientation-service.ts - Accelerometer-based orientation and stability tracking
+  qc-types.ts                - All QC type definitions (LocalQCReport, QCThresholds, DetectedHand, etc.)
+  qc-engine.ts               - Scoring engine (runQCEngine)
+  mediapipe-analyzer.ts      - Real MediaPipe frame analysis (web: direct WASM, native: WebView bridge)
+  webview-mediapipe-bridge.ts - Bridge types & registration for native MediaPipe via hidden WebView
+  orientation-service.ts     - Accelerometer-based orientation and stability tracking
+  session-artifacts.ts       - Writes hand_landmarks.jsonl (21 pts), face_presence.jsonl, frame_qc_metrics.jsonl
 ```
+components/
+  MediaPipeWebView.tsx       - Hidden WebView running MediaPipe WASM for native analysis
 
 ### QC Data Flow
 1. Record screen: accelerometer stability readings collected during recording
 2. On stop: navigate to review with recording params + videoUri
-3. Review screen: calls analyzeVideo() — extracts frames, runs HandLandmarker + FaceDetector
-4. QC report persisted to recordings context
-5. On confirm upload: QC payload included in submission API call
+3. Review screen: calls analyzeVideo() — extracts frames, runs HandLandmarker + FaceLandmarker
+4. Full hand landmarks (21 points × up to 2 hands), handedness, bounding boxes, face presence, brightness/blur/contrast per frame
+5. QC report persisted to recordings context; semantic artifacts written to session folder
+6. On confirm upload: QC payload + all artifacts uploaded to S3
 
 ### MediaPipe Integration
-- Package: @mediapipe/tasks-vision (WASM-based, web-first)
+- Package: @mediapipe/tasks-vision v0.10.32 (WASM-based)
 - Models loaded from Google CDN on first use (~11MB WASM + models, cached after)
-- Singleton pattern: HandLandmarker + FaceDetector initialized once, reused
-- Simulated URI detection: skips ML for test/simulated videos, uses intelligent simulation
-- Native path: requires EAS Build with TFLite native backend to activate real detection
+- Singleton pattern: HandLandmarker + FaceLandmarker initialized once, reused
+- Web path: direct in-browser WASM analysis with canvas seek+capture
+- Native path: WebView bridge — expo-video-thumbnails extracts JPEG frames → hidden WebView runs MediaPipe → results sent back via postMessage
+- Full hand landmark data: 21 points per hand with x/y/z normalized coords, handedness (Left/Right/Unknown), confidence scores
+- Bridge validates payloads: filters malformed hands, normalizes handedness enum, clamps confidence values
 
 ## Project Structure
 ```
