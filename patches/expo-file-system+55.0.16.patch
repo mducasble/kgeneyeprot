@@ -1,0 +1,25 @@
+diff --git a/node_modules/expo-file-system/ios/FileSystemModule.swift b/node_modules/expo-file-system/ios/FileSystemModule.swift
+--- a/node_modules/expo-file-system/ios/FileSystemModule.swift
++++ b/node_modules/expo-file-system/ios/FileSystemModule.swift
+@@ -147,7 +147,7 @@ public final class FileSystemModule: Module {
+       guard let fileSystemManager = appContext?.fileSystem else {
+         return output
+       }
+ 
+-      if fileSystemManager.getPathPermissions(url.path).contains(.read) {
++      if (fileSystemManager as? EXFilePermissionModuleInterface)?.getPathPermissions(url.path).contains(.read) ?? true {
+         var isDirectory: ObjCBool = false
+         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
+           output.exists = true
+diff --git a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
+--- a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
++++ b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
+@@ -63,7 +63,7 @@ internal func ensurePathPermission(_ appContext: AppContext?, path: String, flag:
+   guard let fileSystemManager = appContext?.fileSystem else {
+     throw Exceptions.PermissionsModuleNotFound()
+   }
+-  guard fileSystemManager.getPathPermissions(path).contains(flag) else {
++  guard (fileSystemManager as? EXFilePermissionModuleInterface)?.getPathPermissions(path).contains(flag) ?? true else {
+     throw flag == .read ? FileNotReadableException(path) : FileNotWritableException(path)
+   }
+ }
