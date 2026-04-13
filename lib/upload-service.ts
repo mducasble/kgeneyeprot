@@ -41,9 +41,12 @@ export async function validateBeforeUpload(
   if (Platform.OS !== "web") {
     try {
       const videoInfo = await FileSystem.getInfoAsync(videoUri);
-      if (!videoInfo.exists) warnings.push("Video file could not be verified locally");
+      if (!videoInfo.exists) {
+        errors.push("Video file no longer exists on device");
+        return { valid: false, errors, warnings };
+      }
     } catch {
-      // URI format from camera may not be stat-able — let the upload attempt decide
+      warnings.push("Video file could not be verified locally");
     }
 
     if (session?.imuPath) {
@@ -91,7 +94,35 @@ async function getFileBlob(uri: string): Promise<Blob> {
   return await response.blob();
 }
 
-async function uploadSmallFile(
+async function uploadSmallFileNative(
+  fileUri: string,
+  s3Key: string,
+  contentType: string,
+  token: string,
+): Promise<string> {
+  const baseUrl = getApiUrl();
+
+  const presignRes = await fetch(new URL("/api/uploads/presign", baseUrl).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ s3Key, contentType }),
+  });
+  if (!presignRes.ok) throw new Error(`Failed to get presigned URL for ${s3Key}`);
+  const { presignedUrl } = await presignRes.json();
+
+  const uploadResult = await FileSystem.uploadAsync(presignedUrl, fileUri, {
+    httpMethod: "PUT",
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { "Content-Type": contentType },
+  });
+
+  if (uploadResult.status < 200 || uploadResult.status >= 300) {
+    throw new Error(`Upload failed for ${s3Key} (status ${uploadResult.status})`);
+  }
+  return s3Key;
+}
+
+async function uploadSmallFileWeb(
   fileUri: string,
   s3Key: string,
   contentType: string,
@@ -117,21 +148,75 @@ async function uploadSmallFile(
   return s3Key;
 }
 
-export async function uploadVideoChunked(
+async function uploadSmallFile(
+  fileUri: string,
+  s3Key: string,
+  contentType: string,
+  token: string,
+): Promise<string> {
+  if (Platform.OS !== "web") {
+    return uploadSmallFileNative(fileUri, s3Key, contentType, token);
+  }
+  return uploadSmallFileWeb(fileUri, s3Key, contentType, token);
+}
+
+async function uploadVideoNative(
   videoUri: string,
-  questId: string,
-  recordingId: string,
+  s3Key: string,
   token: string,
   onProgress?: (p: UploadProgress) => void,
-  sessionFiles?: SessionFileOptions,
 ): Promise<string> {
   const baseUrl = getApiUrl();
-  const sessionId = sessionFiles?.sessionId ?? recordingId;
+
+  const fileInfo = await FileSystem.getInfoAsync(videoUri);
+  if (!fileInfo.exists) throw new Error("Video file not found on device");
+  const fileSize = (fileInfo as any).size || 0;
+  const contentType = "video/mp4";
+
+  if (fileSize > 0 && fileSize > CHUNK_SIZE) {
+    return uploadVideoMultipartWeb(videoUri, s3Key, token, onProgress);
+  }
+
+  onProgress?.({ chunkIndex: 0, totalChunks: 1, bytesUploaded: 0, totalBytes: fileSize, phase: "video" });
+
+  const presignRes = await fetch(new URL("/api/uploads/presign", baseUrl).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ s3Key, contentType }),
+  });
+  if (!presignRes.ok) {
+    const err = await presignRes.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to get presigned URL");
+  }
+  const { presignedUrl } = await presignRes.json();
+
+  const uploadResult = await FileSystem.uploadAsync(presignedUrl, videoUri, {
+    httpMethod: "PUT",
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { "Content-Type": contentType },
+  });
+
+  if (uploadResult.status < 200 || uploadResult.status >= 300) {
+    throw new Error(`Video upload failed (status ${uploadResult.status}): ${uploadResult.body?.substring(0, 200)}`);
+  }
+
+  onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: fileSize, totalBytes: fileSize, phase: "video" });
+
+  const location = `https://${process.env.EXPO_PUBLIC_DOMAIN ? "kaivideo" : "kaivideo"}.s3.us-east-1.amazonaws.com/${s3Key}`;
+  return location;
+}
+
+async function uploadVideoMultipartWeb(
+  videoUri: string,
+  s3Key: string,
+  token: string,
+  onProgress?: (p: UploadProgress) => void,
+): Promise<string> {
+  const baseUrl = getApiUrl();
+  const contentType = "video/mp4";
 
   const blob = await getFileBlob(videoUri);
   const fileSize = blob.size;
-  const contentType = blob.type || "video/mp4";
-  const s3Key = `sessions/${sessionId}/video.mp4`;
 
   const initiateRes = await fetch(new URL("/api/uploads/initiate", baseUrl).toString(), {
     method: "POST",
@@ -191,54 +276,6 @@ export async function uploadVideoChunked(
     });
     if (!completeRes.ok) throw new Error("Failed to complete upload");
     const { location } = await completeRes.json();
-
-    if (sessionFiles && Platform.OS !== "web") {
-      if (sessionFiles.imuPath) {
-        try {
-          onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "imu" });
-          await uploadSmallFile(
-            sessionFiles.imuPath,
-            `sessions/${sessionId}/imu.jsonl`,
-            "application/x-ndjson",
-            token,
-          );
-          console.log("[UPLOAD] imu.jsonl uploaded");
-        } catch (e) {
-          console.warn("[UPLOAD] imu.jsonl upload failed (non-blocking):", e);
-        }
-      }
-
-      if (sessionFiles.metadataPath) {
-        try {
-          onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "metadata" });
-          await uploadSmallFile(
-            sessionFiles.metadataPath,
-            `sessions/${sessionId}/metadata.json`,
-            "application/json",
-            token,
-          );
-          console.log("[UPLOAD] metadata.json uploaded");
-        } catch (e) {
-          console.warn("[UPLOAD] metadata.json upload failed (non-blocking):", e);
-        }
-      }
-
-      if (sessionFiles.qcReportPath) {
-        try {
-          onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "qc" });
-          await uploadSmallFile(
-            sessionFiles.qcReportPath,
-            `sessions/${sessionId}/qc_report.json`,
-            "application/json",
-            token,
-          );
-          console.log("[UPLOAD] qc_report.json uploaded");
-        } catch (e) {
-          console.warn("[UPLOAD] qc_report.json upload failed (non-blocking):", e);
-        }
-      }
-    }
-
     return location as string;
   } catch (err) {
     await fetch(new URL("/api/uploads/abort", baseUrl).toString(), {
@@ -248,4 +285,73 @@ export async function uploadVideoChunked(
     }).catch(() => {});
     throw err;
   }
+}
+
+export async function uploadVideoChunked(
+  videoUri: string,
+  questId: string,
+  recordingId: string,
+  token: string,
+  onProgress?: (p: UploadProgress) => void,
+  sessionFiles?: SessionFileOptions,
+): Promise<string> {
+  const sessionId = sessionFiles?.sessionId ?? recordingId;
+  const s3Key = `sessions/${sessionId}/video.mp4`;
+
+  let location: string;
+
+  if (Platform.OS !== "web") {
+    location = await uploadVideoNative(videoUri, s3Key, token, onProgress);
+  } else {
+    location = await uploadVideoMultipartWeb(videoUri, s3Key, token, onProgress);
+  }
+
+  if (sessionFiles && Platform.OS !== "web") {
+    if (sessionFiles.imuPath) {
+      try {
+        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "imu" });
+        await uploadSmallFile(
+          sessionFiles.imuPath,
+          `sessions/${sessionId}/imu.jsonl`,
+          "application/x-ndjson",
+          token,
+        );
+        console.log("[UPLOAD] imu.jsonl uploaded");
+      } catch (e) {
+        console.warn("[UPLOAD] imu.jsonl upload failed (non-blocking):", e);
+      }
+    }
+
+    if (sessionFiles.metadataPath) {
+      try {
+        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "metadata" });
+        await uploadSmallFile(
+          sessionFiles.metadataPath,
+          `sessions/${sessionId}/metadata.json`,
+          "application/json",
+          token,
+        );
+        console.log("[UPLOAD] metadata.json uploaded");
+      } catch (e) {
+        console.warn("[UPLOAD] metadata.json upload failed (non-blocking):", e);
+      }
+    }
+
+    if (sessionFiles.qcReportPath) {
+      try {
+        onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: 0, totalBytes: 0, phase: "qc" });
+        await uploadSmallFile(
+          sessionFiles.qcReportPath,
+          `sessions/${sessionId}/qc_report.json`,
+          "application/json",
+          token,
+        );
+        console.log("[UPLOAD] qc_report.json uploaded");
+      } catch (e) {
+        console.warn("[UPLOAD] qc_report.json upload failed (non-blocking):", e);
+      }
+    }
+  }
+
+  return location;
 }

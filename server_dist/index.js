@@ -80,7 +80,7 @@ var s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   }
 });
-var BUCKET = process.env.AWS_S3_BUCKET;
+var BUCKET = process.env.AWS_S3_BUCKET === "kaivoice" ? "kaivideo" : process.env.AWS_S3_BUCKET;
 async function initiateMultipartUpload(s3Key, contentType) {
   const cmd = new CreateMultipartUploadCommand({
     Bucket: BUCKET,
@@ -580,7 +580,8 @@ function setupErrorHandler(app2) {
   if (missingAws.length > 0) {
     console.warn(`[S3] Missing AWS env vars: ${missingAws.join(", ")} \u2014 uploads will fail`);
   } else {
-    log(`[S3] Configured: bucket=${process.env.AWS_S3_BUCKET} region=${process.env.AWS_S3_REGION}`);
+    const effectiveBucket = process.env.AWS_S3_BUCKET === "kaivoice" ? "kaivideo" : process.env.AWS_S3_BUCKET;
+    log(`[S3] Configured: bucket=${effectiveBucket} region=${process.env.AWS_S3_REGION}`);
   }
   configureExpoAndLanding(app);
   const server = await registerRoutes(app);
