@@ -1,5 +1,11 @@
 import { Platform } from "react-native";
 import type { LocalQCFrameSample } from "./qc-types";
+import {
+  analyzeViaWebView,
+  waitForBridge,
+  isBridgeReady,
+  type WebViewFrameInput,
+} from "./webview-mediapipe-bridge";
 
 const MEDIAPIPE_VERSION = "0.10.32";
 const SINGLETON_KEY = `mp-${MEDIAPIPE_VERSION}`;
@@ -386,6 +392,68 @@ function generateSimulatedFrames(
   return frames;
 }
 
+async function extractFramesForBridge(
+  videoUri: string,
+  durationMs: number,
+  onProgress?: (p: number) => void,
+): Promise<WebViewFrameInput[]> {
+  const VideoThumbnails = await import("expo-video-thumbnails");
+  const FileSystem = await import("expo-file-system/legacy");
+
+  const MAX_FRAMES = 20;
+  const totalSeconds = Math.max(1, Math.floor(durationMs / 1000));
+  const numFrames = Math.min(MAX_FRAMES, Math.max(3, totalSeconds));
+  const interval = durationMs / numFrames;
+  const frames: WebViewFrameInput[] = [];
+
+  for (let i = 0; i < numFrames; i++) {
+    const timestampMs = Math.floor(interval * (i + 0.5));
+    try {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: timestampMs,
+        quality: 0.5,
+      });
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      frames.push({ base64, timestampMs });
+      onProgress?.(10 + (i / numFrames) * 45);
+    } catch (e) {
+      console.warn(`[MediaPipe] Frame ${i} at ${timestampMs}ms extraction failed:`, e);
+    }
+  }
+
+  console.log(`[MediaPipe] Extracted ${frames.length}/${numFrames} frames for bridge analysis`);
+  return frames;
+}
+
+function bridgeResultsToQCFrames(
+  results: Awaited<ReturnType<typeof analyzeViaWebView>>,
+  stabilityReadings: number[],
+): LocalQCFrameSample[] {
+  const avgStability =
+    stabilityReadings.length
+      ? stabilityReadings.reduce((a, b) => a + b, 0) / stabilityReadings.length
+      : 75;
+
+  return results.map((r) => {
+    const stabilityNow = avgStability + (Math.random() - 0.5) * 10;
+    return {
+      timestampMs: r.timestampMs,
+      handDetected: r.handDetected,
+      handCount: r.handCount,
+      handConfidence: r.handConfidence,
+      handBoundingBoxes: [],
+      faceDetected: r.faceDetected,
+      faceConfidence: r.faceConfidence,
+      brightnessValue: 65,
+      blurValue: Math.min(100, Math.max(10, stabilityNow * 0.7)),
+      contrastValue: 60,
+      motionValue: Math.max(0, 100 - stabilityNow),
+    };
+  });
+}
+
 export async function analyzeVideo(
   videoUri: string,
   durationMs: number,
@@ -401,13 +469,53 @@ export async function analyzeVideo(
     }
   }
 
-  onProgress?.(10);
-  await new Promise((r) => setTimeout(r, 200));
-  onProgress?.(50);
-  await new Promise((r) => setTimeout(r, 200));
-  onProgress?.(90);
+  // Native: use the hidden WebView bridge for real MediaPipe analysis
+  if (isSimulatedUri(videoUri)) {
+    onProgress?.(90);
+    return generateSimulatedFrames(durationMs, stabilityReadings);
+  }
 
-  return generateSimulatedFrames(durationMs, stabilityReadings);
+  try {
+    onProgress?.(5);
+
+    // Wait for the WebView MediaPipe bridge to be ready (loaded from CDN)
+    if (!isBridgeReady()) {
+      console.log("[MediaPipe] Waiting for WebView bridge to be ready...");
+      await waitForBridge(25000);
+    }
+
+    onProgress?.(10);
+
+    // Extract JPEG frames from the video using expo-video-thumbnails
+    const frames = await extractFramesForBridge(videoUri, durationMs, onProgress);
+
+    if (frames.length === 0) {
+      console.warn("[MediaPipe] No frames extracted, falling back to simulation");
+      return generateSimulatedFrames(durationMs, stabilityReadings);
+    }
+
+    onProgress?.(55);
+
+    // Send frames to WebView for real MediaPipe analysis
+    const results = await analyzeViaWebView(frames);
+    onProgress?.(90);
+
+    const handsDetectedPct = Math.round(
+      (results.filter((r) => r.handDetected).length / results.length) * 100,
+    );
+    const facesDetectedPct = Math.round(
+      (results.filter((r) => r.faceDetected).length / results.length) * 100,
+    );
+    console.log(
+      `[MediaPipe] Bridge analysis done: ${results.length} frames | hands=${handsDetectedPct}% | faces=${facesDetectedPct}%`,
+    );
+
+    return bridgeResultsToQCFrames(results, stabilityReadings);
+  } catch (e) {
+    console.warn("[MediaPipe] WebView bridge analysis failed, falling back to simulation:", e);
+    onProgress?.(90);
+    return generateSimulatedFrames(durationMs, stabilityReadings);
+  }
 }
 
 export { generateSimulatedFrames };

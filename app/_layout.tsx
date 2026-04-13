@@ -13,6 +13,7 @@ import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MediaPipeWebView } from "@/components/MediaPipeWebView";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { RecordingsProvider } from "@/lib/recordings-context";
@@ -83,6 +84,7 @@ export default function RootLayout() {
               ) : (
                 <KeyboardProvider>
                   <RootLayoutNav />
+                  <MediaPipeWebView />
                 </KeyboardProvider>
               )}
             </GestureHandlerRootView>
