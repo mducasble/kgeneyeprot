@@ -133,6 +133,114 @@ function OrientationGate({ required, children }: { required: typeof REQUIRED_ORI
   );
 }
 
+const ZOOM_OPTIONS = [
+  { label: "0.5x", value: 0 },
+  { label: "1x", value: 0.02 },
+  { label: "2x", value: 0.08 },
+  { label: "3x", value: 0.15 },
+  { label: "5x", value: 0.3 },
+];
+
+function ZoomSelector({
+  current,
+  onChange,
+  expanded,
+  onToggle,
+}: {
+  current: number;
+  onChange: (v: number) => void;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const activeOption = ZOOM_OPTIONS.reduce((prev, opt) =>
+    Math.abs(opt.value - current) < Math.abs(prev.value - current) ? opt : prev
+  );
+
+  if (!expanded) {
+    return (
+      <Pressable
+        style={({ pressed }) => [zoomStyles.pill, { opacity: pressed ? 0.8 : 1 }]}
+        onPress={() => {
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onToggle();
+        }}
+      >
+        <Text style={zoomStyles.pillText}>{activeOption.label}</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={zoomStyles.expandedRow}>
+      {ZOOM_OPTIONS.map((opt) => {
+        const isActive = opt.value === activeOption.value;
+        return (
+          <Pressable
+            key={opt.label}
+            style={({ pressed }) => [
+              zoomStyles.option,
+              isActive && zoomStyles.optionActive,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onChange(opt.value);
+              onToggle();
+            }}
+          >
+            <Text style={[zoomStyles.optionText, isActive && zoomStyles.optionTextActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const zoomStyles = StyleSheet.create({
+  pill: {
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    alignSelf: "center" as const,
+  },
+  pillText: {
+    color: "#FFD700",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  expandedRow: {
+    flexDirection: "row" as const,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    borderRadius: 28,
+    padding: 4,
+    gap: 2,
+    alignSelf: "center" as const,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  option: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  optionActive: {
+    backgroundColor: "rgba(255,215,0,0.2)",
+  },
+  optionText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  optionTextActive: {
+    color: "#FFD700",
+  },
+});
+
 function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
   if (!hints.length) return null;
   const hint = hints[0];
@@ -169,6 +277,8 @@ export default function RecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [facing, setFacing] = useState<"front" | "back">("back");
+  const [zoom, setZoom] = useState(0);
+  const [showZoomPicker, setShowZoomPicker] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const recordingRef = useRef(false);
@@ -455,7 +565,7 @@ export default function RecordScreen() {
   return (
     <OrientationGate required={REQUIRED_ORIENTATION}>
       <View style={[styles.container, { backgroundColor: "#000" }]}>
-        <CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="video">
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="video" zoom={zoom}>
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
             <Pressable
               style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]}
@@ -504,6 +614,15 @@ export default function RecordScreen() {
               </View>
             </View>
           )}
+
+          <View style={styles.zoomRow}>
+            <ZoomSelector
+              current={zoom}
+              onChange={setZoom}
+              expanded={showZoomPicker}
+              onToggle={() => setShowZoomPicker((v) => !v)}
+            />
+          </View>
 
           <View style={[styles.controls, { paddingBottom: insets.bottom + 30 }]}>
             {isRecording ? (
@@ -598,6 +717,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   guideText: { color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_400Regular" },
+  zoomRow: {
+    position: "absolute" as const,
+    bottom: 140,
+    left: 0,
+    right: 0,
+    alignItems: "center" as const,
+    zIndex: 10,
+  },
   controls: {
     position: "absolute" as const,
     bottom: 0,
