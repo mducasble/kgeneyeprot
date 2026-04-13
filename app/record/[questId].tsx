@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
 import { useKeepAwake } from "expo-keep-awake";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { useRecordings } from "@/lib/recordings-context";
 import { useDeviceOrientation, useStabilityTracker, isOrientationValid } from "@/lib/orientation-service";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
@@ -287,9 +288,18 @@ export default function RecordScreen() {
   const { hints, liveFrames } = useLiveAnalysis(isRecording);
 
   useEffect(() => {
+    if (Platform.OS !== "web") {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch((e) =>
+        console.warn("[Orientation] Lock failed:", e),
+      );
+    }
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       stopIMUCapture().catch(() => {});
+      if (Platform.OS !== "web") {
+        ScreenOrientation.unlockAsync().catch(() => {});
+      }
     };
   }, []);
 
