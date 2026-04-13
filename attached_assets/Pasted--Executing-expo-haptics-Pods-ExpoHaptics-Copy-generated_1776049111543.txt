@@ -1,0 +1,50 @@
+ Executing expo-haptics Pods/ExpoHaptics » Copy generated compatibility header
+› Compiling expo-glass-effect Pods/ExpoGlassEffect » ExpoGlassEffect-dummy.m
+› Packaging expo-glass-effect Pods/ExpoGlassEffect » libExpoGlassEffect.a
+› Executing expo-glass-effect Pods/ExpoGlassEffect » Copy generated compatibility header
+
+❌  (node_modules/expo-file-system/ios/FileSystemModule.swift:150:28)
+
+  148 |       }
+  149 | 
+> 150 |       if fileSystemManager.getPathPermissions(url.path).contains(.read) {
+      |                            ^ value of type 'any EXFileSystemInterface' has no member 'getPathPermissions'
+  151 |         var isDirectory: ObjCBool = false
+  152 |         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
+  153 |           output.exists = true
+
+❌  (node_modules/expo-file-system/ios/FileSystemModule.swift:150:67)
+
+  148 |       }
+  149 | 
+> 150 |       if fileSystemManager.getPathPermissions(url.path).contains(.read) {
+      |                                                                   ^ cannot infer contextual base in reference to member 'read'
+  151 |         var isDirectory: ObjCBool = false
+  152 |         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
+  153 |           output.exists = true
+› Compiling expo-router Pods/ExpoHead » ExpoHead-dummy.m
+    Run script build phase '[CP-User] [Hermes] Replace Hermes for the right configuration, if needed' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'hermes-engine' from project 'Pods')
+▸ ** ARCHIVE FAILED **
+▸ The following build commands failed:
+▸ 	SwiftCompile normal arm64 Compiling\ Encoding.swift,\ FilePickingHandler.swift,\ FilePickingUtils.swift,\ FileSystemBackgroundSessionHandler.swift,\ FileSystemDirectory.swift,\ FileSystemExceptions.swift,\ FileSystemFile.swift,\ FileSystemFileHandle.swift,\ FileSystemHelpers.swift,\ FileSystemLegacyExceptions.swift,\ FileSystemLegacyModule.swift,\ FileSystemLegacyRecords.swift,\ FileSystemModule.swift,\ FileSystemPath.swift,\ FileSystemRecords.swift,\ NetworkingHelpers.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/Encoding.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FilePickingHandler.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FilePickingUtils.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/FileSystemBackgroundSessionHandler.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemDirectory.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemExceptions.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemFile.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemFileHandle.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/FileSystemLegacyExceptions.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/FileSystemLegacyModule.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/FileSystemLegacyRecords.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemModule.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemPath.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/FileSystemRecords.swift /Users/expo/workingdir/build/node_modules/expo-file-system/ios/Legacy/NetworkingHelpers.swift (in target 'ExpoFileSystem' from project 'Pods')
+▸ 	CompileSwift normal arm64 (in target 'ExpoFileSystem' from project 'Pods')
+▸ 	Archiving workspace KGeNEgoProto with scheme KGeNEgoProto
+▸ (3 failures)
+Exit status: 65
++---------------------------------------+
+|           Build environment           |
++-------------+-------------------------+
+| xcode_path  | /Applications/Xcode.app |
+| gym_version | 2.228.0                 |
+| sdk         | iPhoneOS26.0.sdk        |
++-------------+-------------------------+
+Looks like fastlane ran into a build/archive error with your project
+It's hard to tell what's causing the error, so we wrote some guides on how
+to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/
+Before submitting an issue on GitHub, please follow the guide above and make
+sure your project is set up correctly.
+fastlane uses `xcodebuild` commands to generate your binary, you can see the
+the full commands printed out in yellow in the above log.
+Make sure to inspect the output above, as usually you'll find more error information there
+[!] Error building the application - see the log above
+fastlane gym exited with non-zero code: 1
