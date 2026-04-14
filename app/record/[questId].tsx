@@ -54,6 +54,8 @@ interface LiveFrame {
 
 const ALERT_SOUND_URI = "https://cdn.freesound.org/previews/536/536420_4921277-lq.mp3";
 
+type AlertState = "none" | "no_hand" | "face";
+
 function useLiveAnalysis(
   isRecording: boolean,
   cameraRef: React.RefObject<CameraView | null>,
@@ -61,21 +63,43 @@ function useLiveAnalysis(
 ): {
   hints: LiveGuidanceHint[];
   liveFrames: LiveFrame[];
+  alertState: AlertState;
 } {
   const [liveFrames, setLiveFrames] = useState<LiveFrame[]>([]);
   const [hints, setHints] = useState<LiveGuidanceHint[]>([]);
+  const [alertState, setAlertState] = useState<AlertState>("none");
 
   const noHandSinceRef = useRef<number | null>(null);
   const faceSinceRef = useRef<number | null>(null);
   const analyzingRef = useRef(false);
-  const lastAlertRef = useRef(0);
+  const hapticIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startHapticLoop = useCallback((type: "warning" | "error") => {
+    if (hapticIntervalRef.current) return;
+    const feedbackType = type === "error"
+      ? Haptics.NotificationFeedbackType.Error
+      : Haptics.NotificationFeedbackType.Warning;
+    if (Platform.OS !== "web") Haptics.notificationAsync(feedbackType);
+    hapticIntervalRef.current = setInterval(() => {
+      if (Platform.OS !== "web") Haptics.notificationAsync(feedbackType);
+    }, 1500);
+  }, []);
+
+  const stopHapticLoop = useCallback(() => {
+    if (hapticIntervalRef.current) {
+      clearInterval(hapticIntervalRef.current);
+      hapticIntervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!isRecording) {
       setHints([]);
+      setAlertState("none");
       noHandSinceRef.current = null;
       faceSinceRef.current = null;
       analyzingRef.current = false;
+      stopHapticLoop();
       return;
     }
 
@@ -114,21 +138,18 @@ function useLiveAnalysis(
 
       const now = Date.now();
       const newHints: LiveGuidanceHint[] = [];
+      let newAlertState: AlertState = "none";
 
       if (!handDetected) {
         if (!noHandSinceRef.current) noHandSinceRef.current = now;
         if (now - (noHandSinceRef.current ?? now) > NO_HAND_ALERT_THRESHOLD_MS) {
           newHints.push({ type: "hand", message: "Keep your hands visible", severity: "warning" });
-          if (now - lastAlertRef.current > 4000) {
-            lastAlertRef.current = now;
-            if (Platform.OS !== "web") {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              if (alertPlayer) {
-                alertPlayer.seekTo(0).then(() => alertPlayer.play()).catch((e: any) =>
-                  console.warn("[Alert] Sound play failed:", e),
-                );
-              }
-            }
+          newAlertState = "no_hand";
+          startHapticLoop("warning");
+          if (alertPlayer) {
+            alertPlayer.seekTo(0).then(() => alertPlayer.play()).catch((e: any) =>
+              console.warn("[Alert] Sound play failed:", e),
+            );
           }
         }
       } else {
@@ -139,24 +160,28 @@ function useLiveAnalysis(
         if (!faceSinceRef.current) faceSinceRef.current = now;
         if (now - (faceSinceRef.current ?? now) > FACE_ALERT_THRESHOLD_MS) {
           newHints.push({ type: "face", message: "Face detected — adjust camera", severity: "error" });
-          if (now - lastAlertRef.current > 4000) {
-            lastAlertRef.current = now;
-            if (Platform.OS !== "web") {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            }
-          }
+          newAlertState = "face";
+          startHapticLoop("error");
         }
       } else {
         faceSinceRef.current = null;
       }
 
+      if (newAlertState === "none") {
+        stopHapticLoop();
+      }
+
+      setAlertState(newAlertState);
       setHints(newHints);
     }, LIVE_ANALYSIS_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      stopHapticLoop();
+    };
   }, [isRecording]);
 
-  return { hints, liveFrames };
+  return { hints, liveFrames, alertState };
 }
 
 function OrientationGate({ required, children }: { required: typeof REQUIRED_ORIENTATION; children: React.ReactNode }) {
@@ -292,44 +317,42 @@ const zoomStyles = StyleSheet.create({
   },
 });
 
-function HintBanner({ hints }: { hints: LiveGuidanceHint[] }) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+function AlertBorder({ alertState }: { alertState: AlertState }) {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (hints.length > 0) {
+    if (alertState !== "none") {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 0.6, duration: 500, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 300, useNativeDriver: true }),
         ]),
       );
       loop.start();
       return () => loop.stop();
     } else {
-      pulseAnim.setValue(1);
+      pulseAnim.setValue(0);
     }
-  }, [hints.length > 0]);
+  }, [alertState]);
 
-  if (!hints.length) return null;
-  const hint = hints[0];
+  if (alertState === "none") return null;
 
-  const bgColor = hint.severity === "error"
-    ? "rgba(239,68,68,0.92)"
-    : "rgba(245,158,11,0.92)";
-
-  const iconMap: Record<string, string> = {
-    hand: "hand-left-outline",
-    face: "person-outline",
-    lighting: "sunny-outline",
-    stability: "phone-portrait-outline",
-    framing: "scan-outline",
-  };
+  const borderColor = alertState === "face" ? "#EF4444" : "#F59E0B";
 
   return (
-    <Animated.View style={[styles.hintBanner, { backgroundColor: bgColor, opacity: pulseAnim }]}>
-      <Ionicons name={iconMap[hint.type] as any} size={20} color="#fff" />
-      <Text style={styles.hintText}>{hint.message}</Text>
-    </Animated.View>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          borderWidth: 6,
+          borderColor,
+          borderRadius: 4,
+          zIndex: 50,
+          opacity: pulseAnim,
+        },
+      ]}
+    />
   );
 }
 
@@ -356,7 +379,7 @@ export default function RecordScreen() {
 
   const deviceOrientation = useDeviceOrientation();
   const stabilityReadings = useStabilityTracker();
-  const { hints, liveFrames } = useLiveAnalysis(isRecording, cameraRef, alertPlayer);
+  const { hints, liveFrames, alertState } = useLiveAnalysis(isRecording, cameraRef, alertPlayer);
 
   useEffect(() => {
     activateKeepAwakeAsync("recording").catch((e) =>
@@ -690,7 +713,7 @@ export default function RecordScreen() {
             </Pressable>
           </View>
 
-          <HintBanner hints={hints} />
+          <AlertBorder alertState={alertState} />
 
           {!isRecording && (
             <View style={styles.precaptureGuide}>
@@ -781,22 +804,6 @@ const styles = StyleSheet.create({
   },
   recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EF4444" },
   timerText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  hintBanner: {
-    position: "absolute" as const,
-    top: 100,
-    left: 16,
-    right: 16,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
-    zIndex: 10,
-  },
-  hintText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold", flex: 1 },
   precaptureGuide: {
     position: "absolute" as const,
     bottom: 160,
