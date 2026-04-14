@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -140,8 +140,11 @@ export default function UploadsScreen() {
   const insets = useSafeAreaInsets();
   const [progressMap, setProgressMap] = useState<Record<string, UploadProgress>>({});
   const pending = recordings.filter((r) => r.uploadStatus !== "uploaded");
+  // Prevents multiple "Session Expired" alerts from stacking when Retry All hits 401 on each item
+  const sessionExpiredRef = useRef(false);
 
   const handleRetry = useCallback(async (id: string) => {
+    if (sessionExpiredRef.current) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const recording = recordings.find((r) => r.id === id);
     if (!recording || !token) return;
@@ -191,15 +194,18 @@ export default function UploadsScreen() {
       if (subRes.status === 401) {
         setProgressMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
         updateUploadStatus(id, "queued");
-        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert(
-          "Session Expired",
-          "Your session has expired. Please log in again to continue uploading.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Log In", onPress: () => router.replace("/(auth)/login") },
-          ],
-        );
+        if (!sessionExpiredRef.current) {
+          sessionExpiredRef.current = true;
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert(
+            "Session Expired",
+            "Your session has expired. Please log in again to continue uploading.",
+            [
+              { text: "Cancel", style: "cancel", onPress: () => { sessionExpiredRef.current = false; } },
+              { text: "Log In", onPress: () => { sessionExpiredRef.current = false; router.replace("/(auth)/login"); } },
+            ],
+          );
+        }
         return;
       }
       if (!subRes.ok) {
@@ -255,8 +261,10 @@ export default function UploadsScreen() {
             style={({ pressed }) => [styles.retryAllBtn, { opacity: pressed ? 0.8 : 1 }]}
             onPress={async () => {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              sessionExpiredRef.current = false;
               for (const r of pending.filter(r => r.uploadStatus === "queued" || r.uploadStatus === "failed")) {
                 await handleRetry(r.id);
+                if (sessionExpiredRef.current) break;
               }
             }}
           >
