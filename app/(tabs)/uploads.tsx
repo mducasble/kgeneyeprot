@@ -89,6 +89,14 @@ function UploadItem({
                 <Text style={[styles.qcText, { color: qcColor }]}>{Math.round(qcReport.readinessScore)}</Text>
               </View>
             )}
+            {(recording.imuSampleCount ?? 0) > 0 && (
+              <View style={[styles.qcBadge, { backgroundColor: "#818CF818", borderColor: "#818CF835" }]}>
+                <Ionicons name="pulse-outline" size={10} color="#818CF8" />
+                <Text style={[styles.qcText, { color: "#818CF8" }]}>
+                  {`${((recording.imuEstimatedHz ?? 0)).toFixed(0)}Hz`}
+                </Text>
+              </View>
+            )}
           </View>
           {isUploading && (
             <View style={styles.progressTrack}>
