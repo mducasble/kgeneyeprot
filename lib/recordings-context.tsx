@@ -72,7 +72,12 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
           let recs: Recording[] = JSON.parse(stored);
           if (Platform.OS !== "web" && FileSystem.documentDirectory) {
             const currentDocDir = FileSystem.documentDirectory;
-            recs = recs.map((r) => healRecordingPaths(r, currentDocDir));
+            const healed = recs.map((r) => healRecordingPaths(r, currentDocDir));
+            const anyChanged = healed.some((r, i) => r !== recs[i]);
+            recs = healed;
+            if (anyChanged) {
+              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recs)).catch(() => {});
+            }
           }
           setRecordings(recs);
         }

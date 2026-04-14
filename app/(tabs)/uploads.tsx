@@ -165,10 +165,7 @@ export default function UploadsScreen() {
 
     const validation = await validateBeforeUpload(recording.uri, sessionFiles);
     if (!validation.valid) {
-      const isFileMissing = validation.errors.some((e) =>
-        e.toLowerCase().includes("no longer exists") || e.toLowerCase().includes("not found"),
-      );
-      if (isFileMissing) {
+      if (validation.videoFileMissing) {
         updateUploadStatus(id, "file_lost");
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert(

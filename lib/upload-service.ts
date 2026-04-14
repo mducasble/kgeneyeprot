@@ -33,6 +33,7 @@ export interface SessionUploadValidation {
   valid: boolean;
   errors: string[];
   warnings: string[];
+  videoFileMissing?: boolean;
 }
 
 export async function validateBeforeUpload(
@@ -51,7 +52,7 @@ export async function validateBeforeUpload(
       const videoInfo = await FileSystem.getInfoAsync(videoUri);
       if (!videoInfo.exists) {
         errors.push("Video file no longer exists on device");
-        return { valid: false, errors, warnings };
+        return { valid: false, errors, warnings, videoFileMissing: true };
       }
     } catch {
       warnings.push("Video file could not be verified locally");
