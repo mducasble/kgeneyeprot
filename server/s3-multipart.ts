@@ -77,12 +77,11 @@ export async function abortMultipartUpload(
 
 export async function getObjectPresignedUrl(
   s3Key: string,
-  contentType: string,
+  _contentType: string,
 ): Promise<string> {
   const cmd = new PutObjectCommand({
     Bucket: BUCKET,
     Key: s3Key,
-    ContentType: contentType,
   });
   return await getSignedUrl(s3, cmd, { expiresIn: 3600 });
 }

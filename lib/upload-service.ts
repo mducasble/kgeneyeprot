@@ -221,6 +221,8 @@ async function tryUploadFile(
   }
 }
 
+const UPLOAD_TIMEOUT_MS = 120_000;
+
 async function uploadVideoNative(
   videoUri: string,
   s3Key: string,
@@ -231,10 +233,16 @@ async function uploadVideoNative(
 
   const fileInfo = await FileSystem.getInfoAsync(videoUri);
   if (!fileInfo.exists) throw new Error("Video file not found on device");
-  const fileSize = (fileInfo as any).size || 0;
+  const fileSize = (fileInfo as any).size ?? 0;
+  console.log(`[UPLOAD] native video: uri=${videoUri} size=${fileSize} bytes`);
+
+  if (fileSize === 0) {
+    throw new Error("Video file is empty (0 bytes) — the recording may not have saved correctly");
+  }
+
   const contentType = "video/mp4";
 
-  if (fileSize > 0 && fileSize > CHUNK_SIZE) {
+  if (fileSize > CHUNK_SIZE) {
     return uploadVideoMultipartWeb(videoUri, s3Key, token, onProgress);
   }
 
@@ -250,15 +258,28 @@ async function uploadVideoNative(
     throw new Error(err.message || "Failed to get presigned URL");
   }
   const { presignedUrl } = await presignRes.json();
+  console.log(`[UPLOAD] presigned URL obtained, starting uploadAsync…`);
 
-  const uploadResult = await FileSystem.uploadAsync(presignedUrl, videoUri, {
-    httpMethod: "PUT",
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-    headers: { "Content-Type": contentType },
-  });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`Video upload timed out after ${UPLOAD_TIMEOUT_MS / 1000}s — check network or S3 configuration`)),
+      UPLOAD_TIMEOUT_MS,
+    ),
+  );
+
+  const uploadResult = await Promise.race([
+    FileSystem.uploadAsync(presignedUrl, videoUri, {
+      httpMethod: "PUT",
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers: { "Content-Type": contentType },
+    }),
+    timeoutPromise,
+  ]);
+
+  console.log(`[UPLOAD] uploadAsync result: status=${uploadResult.status} body=${uploadResult.body?.substring(0, 500) ?? "(empty)"}`);
 
   if (uploadResult.status < 200 || uploadResult.status >= 300) {
-    throw new Error(`Video upload failed (status ${uploadResult.status}): ${uploadResult.body?.substring(0, 200)}`);
+    throw new Error(`Video upload failed (HTTP ${uploadResult.status}): ${uploadResult.body?.substring(0, 400) ?? "no response body"}`);
   }
 
   onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: fileSize, totalBytes: fileSize, phase: "video" });
