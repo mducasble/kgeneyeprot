@@ -145,6 +145,7 @@ export default function UploadsScreen() {
       handLandmarksPath: recording.handLandmarksPath,
       facePresencePath: recording.facePresencePath,
       frameQcMetricsPath: recording.frameQcMetricsPath,
+      manifestPath: recording.manifestPath,
     } : undefined;
 
     const validation = await validateBeforeUpload(recording.uri, sessionFiles);

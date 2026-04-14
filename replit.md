@@ -123,32 +123,52 @@ server/
 ```
 
 ## Session Artifact Structure
-Each recording session generates a structured folder at `sessions/{sessionId}/`:
+Each recording session generates a structured folder at `sessions/{sessionId}/`.
+All timeseries files use `.jsonl` (JSON Lines) format — one JSON object per line, no trailing commas.
 
-```
-sessions/{sessionId}/
-  video.mp4                  - Recorded video (copied from temp to session folder)
-  imu.jsonl                  - IMU sensor data (accelerometer + gyroscope, ~100Hz target)
-  metadata.json              - Full session metadata with timing, device, QC summary
-  qc_report.json             - QC analysis results (aggregate scores)
-  video_timestamps.jsonl     - Frame timing reference (estimated from duration+FPS)
-  hand_landmarks.jsonl       - Per-frame hand detection data from MediaPipe
-  face_presence.jsonl        - Per-frame face detection data
-  frame_qc_metrics.jsonl     - Per-frame brightness, blur, detection flags
-```
+### Required Artifacts
+| File | Type | Description |
+|------|------|-------------|
+| `video.mp4` | video | Recorded video |
+| `imu.jsonl` | imu_timeseries | Accelerometer + gyroscope at ~100Hz |
+| `metadata.json` | metadata | Full session metadata with timing, device, QC summary |
+| `qc_report.json` | qc_summary | QC analysis results (aggregate scores) |
+| `video_timestamps.jsonl` | video_timestamps | Frame timing reference |
+
+### Optional (Semantic) Artifacts
+| File | Type | Description |
+|------|------|-------------|
+| `hand_landmarks.jsonl` | hand_landmarks | Per-frame 21-point hand detection from MediaPipe |
+| `face_presence.jsonl` | face_presence | Per-frame face detection with confidence |
+| `frame_qc_metrics.jsonl` | frame_qc_metrics | Per-frame brightness, blur, detection flags |
+| `session_manifest.json` | manifest | Self-describing session package manifest |
+
+### Session Manifest (`session_manifest.json`)
+A machine-readable manifest for downstream processing. Lists all artifacts that were actually written (not hardcoded). Includes `complete` flag (true only if all required files exist) and `missingRequired` array.
+
+### File Naming Convention
+All timeseries use `.jsonl` extension consistently (not `.ndjson`). Content type for uploads: `application/x-ndjson`.
 
 ### Artifact Details
-- **imu.jsonl**: Streams at ~100Hz (10ms interval). Fields: `timestampEpochMs`, `relativeMs`, `accel{x,y,z}`, `gyro{x,y,z}`. Written incrementally in batches to avoid memory growth.
-- **video_timestamps.jsonl**: Estimated frame timing (mode: "estimated"). Fields: `frameIndex`, `timestampEpochMs`, `relativeMs`. Generated from video start time + duration + FPS.
-- **hand_landmarks.jsonl**: Derived from MediaPipe analysis frames. Includes bounding-box-derived landmark points per detected hand.
+- **imu.jsonl**: Direct sensor callback sampling at ~100Hz. Fields: `timestampEpochMs`, `relativeMs`, `accel{x,y,z}`, `gyro{x,y,z}`.
+- **video_timestamps.jsonl**: Frame timing (mode: "estimated"). `frameTimestampQualityNote` in metadata explains the method used.
+- **hand_landmarks.jsonl**: Full 21-point MediaPipe hand landmarks per detected hand, with handedness (Left/Right) and confidence.
 - **face_presence.jsonl**: Boolean face detection with confidence per analyzed frame.
 - **frame_qc_metrics.jsonl**: Per-frame brightness, blur scores, and detection flags.
-- **metadata.json**: Extended schema with IMU stats (targetHz, estimatedHz, sampleCount, durationMs, droppedSampleEstimate), video frame timestamp metadata, semantic artifact flags, artifact file manifest, and validation warnings.
+- **metadata.json**: Includes `deviceModel`, `manufacturer`, `deviceType` (from expo-device), `artifactFiles` (dynamically built from real files), `frameTimestampQualityNote`, and `semanticArtifacts` flags.
+
+### `artifactFiles` in metadata
+Built dynamically after all files are written. Only lists files that actually exist on disk. Deterministic order: video, imu, metadata, qc_report, video_timestamps, hand_landmarks, face_presence, frame_qc_metrics, session_manifest.
+
+### `videoFrameTimestampMode`
+- `"estimated"`: timestamps inferred from videoStartEpochMs + duration + assumed FPS (current default)
+- `"native"`: true frame timestamps from capture pipeline (not yet available in Expo camera API)
+- `frameTimestampQualityNote` field provides human-readable explanation
 
 ### Known Limitations
-- Video frame timestamps are **estimated** (not native) — Expo camera API doesn't expose per-frame hardware timestamps. Frame timing is reconstructed from `videoStartEpochMs + (frameIndex * frameDuration)`.
-- IMU frequency depends on device hardware. Target is 100Hz but actual rate varies (typically 50-100Hz on iOS). The true measured rate is reported honestly in metadata.
-- Hand landmarks from MediaPipe WebView bridge provide bounding boxes but limited landmark points (center, corners). Full 21-point landmarks require native MediaPipe integration.
+- Video frame timestamps are **estimated** (not native) — Expo camera API doesn't expose per-frame hardware timestamps.
+- IMU frequency depends on device hardware. Target is 100Hz; actual rate reported honestly in metadata.
+- `deviceModel` uses expo-device; falls back to "unknown" only as true last resort.
 
 ## API Endpoints
 - POST /api/auth/register - Register new user

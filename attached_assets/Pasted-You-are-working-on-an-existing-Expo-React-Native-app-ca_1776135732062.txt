@@ -1,0 +1,246 @@
+You are working on an existing Expo/React Native app called "KGeN Data Collector App".
+
+The app already generates a multimodal session package with:
+- video.mp4
+- imu data
+- metadata.json
+- qc_report.json
+- video timestamps
+- MediaPipe semantic artifacts
+
+Your task is to apply a SMALL PATCH to fix the remaining inconsistencies and improve packaging quality.
+
+IMPORTANT:
+- Do NOT rewrite the app
+- Do NOT change the existing recording flow
+- Do NOT change the QC logic
+- Do NOT change the upload architecture
+- Only fix the issues below
+
+==================================================
+1) STANDARDIZE NDJSON / JSONL NAMING
+==================================================
+
+Current issue:
+- exported files are being generated with `.ndjson`
+- metadata.artifactFiles currently lists `.jsonl`
+- this mismatch creates ambiguity
+
+Goal:
+- choose ONE format name and use it consistently everywhere
+
+Decision:
+- standardize on `.jsonl`
+
+Tasks:
+- rename generated files to:
+  - imu.jsonl
+  - video_timestamps.jsonl
+  - hand_landmarks.jsonl
+  - face_presence.jsonl
+  - frame_qc_metrics.jsonl
+- update all file writers
+- update all file readers
+- update metadata.artifactFiles
+- update any upload preparation logic
+- update any local state references
+
+If the code currently uses `.ndjson`, keep the internal structure exactly the same, only normalize filenames/extensions to `.jsonl`.
+
+==================================================
+2) ENSURE artifactFiles MATCH REAL FILES
+==================================================
+
+Current issue:
+- metadata lists expected artifacts, but this list must always reflect the actual files created
+
+Goal:
+- metadata.artifactFiles must be built dynamically from the real files written to the session folder
+
+Tasks:
+- after writing all artifacts, generate artifactFiles from the actual successfully created filenames
+- do not hardcode entries that may not exist
+- preserve deterministic order:
+  1. video.mp4
+  2. imu.jsonl
+  3. metadata.json
+  4. qc_report.json
+  5. video_timestamps.jsonl
+  6. hand_landmarks.jsonl
+  7. face_presence.jsonl
+  8. frame_qc_metrics.jsonl
+
+If a semantic artifact is missing, do not lie in metadata. Omit it from artifactFiles and set the semanticArtifacts flags accurately.
+
+==================================================
+3) FILL deviceModel PROPERLY
+==================================================
+
+Current issue:
+- metadata.deviceModel is currently "unknown"
+
+Goal:
+- populate deviceModel with the real device model whenever possible
+
+Tasks:
+- use expo-device or the best available Expo/native API
+- fill:
+  - deviceModel
+  - manufacturer if available
+  - deviceType if available
+
+Update metadata.json to include:
+- deviceModel
+- manufacturer (optional but preferred)
+- deviceType (optional but preferred)
+
+Fallback rule:
+- if exact model is unavailable, use the best available non-empty identifier
+- only use "unknown" as true last resort
+
+==================================================
+4) ADD A SESSION MANIFEST FILE
+==================================================
+
+Goal:
+- create a clean session-level manifest for downstream processing
+
+Create:
+- session_manifest.json
+
+Structure example:
+{
+  "sessionId": string,
+  "sessionFolderPath": string,
+  "createdAtEpochMs": number,
+  "artifacts": [
+    {
+      "name": "video.mp4",
+      "type": "video",
+      "required": true
+    },
+    {
+      "name": "imu.jsonl",
+      "type": "imu_timeseries",
+      "required": true
+    },
+    {
+      "name": "metadata.json",
+      "type": "metadata",
+      "required": true
+    },
+    {
+      "name": "qc_report.json",
+      "type": "qc_summary",
+      "required": true
+    },
+    {
+      "name": "video_timestamps.jsonl",
+      "type": "video_timestamps",
+      "required": true
+    },
+    {
+      "name": "hand_landmarks.jsonl",
+      "type": "hand_landmarks",
+      "required": false
+    },
+    {
+      "name": "face_presence.jsonl",
+      "type": "face_presence",
+      "required": false
+    },
+    {
+      "name": "frame_qc_metrics.jsonl",
+      "type": "frame_qc_metrics",
+      "required": false
+    }
+  ]
+}
+
+Requirements:
+- only include files that actually exist
+- mark required vs optional correctly
+- write this file into the same session folder
+- add session_manifest.json to metadata.artifactFiles if it is created
+
+==================================================
+5) VALIDATE FILESET BEFORE FINALIZING SESSION
+==================================================
+
+Goal:
+- prevent metadata from claiming a complete session package if required files are missing
+
+Required files:
+- video.mp4
+- imu.jsonl
+- metadata.json
+- qc_report.json
+- video_timestamps.jsonl
+
+Optional files:
+- hand_landmarks.jsonl
+- face_presence.jsonl
+- frame_qc_metrics.jsonl
+- session_manifest.json
+
+Tasks:
+- add a final packaging validation step
+- if a required file is missing:
+  - add a warning to metadata
+  - mark the session as incomplete in session_manifest.json
+- if optional files are missing:
+  - keep the session valid
+  - reflect their absence honestly
+
+==================================================
+6) KEEP videoFrameTimestampMode HONEST
+==================================================
+
+Current state:
+- videoFrameTimestampMode may be "estimated"
+
+Goal:
+- preserve honesty and make it easier for downstream systems to understand timestamp quality
+
+Tasks:
+- keep "estimated" if timestamps are inferred
+- only use "native" if true frame timestamps are actually available
+- add one optional field to metadata:
+  - frameTimestampQualityNote
+
+Example values:
+- "estimated from videoStartEpochMs, durationMs, and assumed FPS"
+- "native timestamps from capture pipeline"
+
+==================================================
+7) UPDATE README / DOCS
+==================================================
+
+Add a short section documenting:
+- why `.jsonl` is the chosen standard
+- difference between required and optional artifacts
+- what session_manifest.json is for
+- why videoFrameTimestampMode may be "estimated"
+
+==================================================
+8) DELIVERABLE
+==================================================
+
+After this patch, each session folder should look like:
+
+/sessions/{sessionId}/
+  video.mp4
+  imu.jsonl
+  metadata.json
+  qc_report.json
+  video_timestamps.jsonl
+  hand_landmarks.jsonl
+  face_presence.jsonl
+  frame_qc_metrics.jsonl
+  session_manifest.json
+
+Where:
+- filenames are consistent
+- metadata matches real files
+- device model is filled whenever possible
+- session package is self-describing and auditable

@@ -65,6 +65,7 @@ export async function getSessionFilePaths(sessionId: string): Promise<{
   handLandmarksPath: string;
   facePresencePath: string;
   frameQcMetricsPath: string;
+  manifestPath: string;
 }> {
   const dir = sessionDir(sessionId);
   return {
@@ -75,7 +76,83 @@ export async function getSessionFilePaths(sessionId: string): Promise<{
     handLandmarksPath: `${dir}hand_landmarks.jsonl`,
     facePresencePath: `${dir}face_presence.jsonl`,
     frameQcMetricsPath: `${dir}frame_qc_metrics.jsonl`,
+    manifestPath: `${dir}session_manifest.json`,
   };
+}
+
+interface ArtifactDescriptor {
+  name: string;
+  type: string;
+  required: boolean;
+}
+
+const ALL_ARTIFACTS: ArtifactDescriptor[] = [
+  { name: "video.mp4", type: "video", required: true },
+  { name: "imu.jsonl", type: "imu_timeseries", required: true },
+  { name: "metadata.json", type: "metadata", required: true },
+  { name: "qc_report.json", type: "qc_summary", required: true },
+  { name: "video_timestamps.jsonl", type: "video_timestamps", required: true },
+  { name: "hand_landmarks.jsonl", type: "hand_landmarks", required: false },
+  { name: "face_presence.jsonl", type: "face_presence", required: false },
+  { name: "frame_qc_metrics.jsonl", type: "frame_qc_metrics", required: false },
+];
+
+export async function buildArtifactFilesList(sessionId: string): Promise<string[]> {
+  if (Platform.OS === "web") {
+    return ALL_ARTIFACTS.map((a) => a.name);
+  }
+  const dir = sessionDir(sessionId);
+  const present: string[] = [];
+  for (const artifact of ALL_ARTIFACTS) {
+    try {
+      const info = await FileSystem.getInfoAsync(`${dir}${artifact.name}`);
+      if (info.exists) present.push(artifact.name);
+    } catch {
+      // skip
+    }
+  }
+  return present;
+}
+
+export interface SessionManifest {
+  sessionId: string;
+  sessionFolderPath: string;
+  createdAtEpochMs: number;
+  complete: boolean;
+  missingRequired: string[];
+  artifacts: ArtifactDescriptor[];
+}
+
+export async function writeSessionManifest(
+  sessionId: string,
+  sessionFolderPath: string,
+  createdAtEpochMs: number,
+): Promise<{ path: string; manifest: SessionManifest }> {
+  const dir = sessionDir(sessionId);
+  const path = `${dir}session_manifest.json`;
+
+  const presentFiles = await buildArtifactFilesList(sessionId);
+  const presentSet = new Set(presentFiles);
+
+  const artifacts = ALL_ARTIFACTS.filter((a) => presentSet.has(a.name));
+  const missingRequired = ALL_ARTIFACTS.filter((a) => a.required && !presentSet.has(a.name)).map((a) => a.name);
+
+  const manifest: SessionManifest = {
+    sessionId,
+    sessionFolderPath,
+    createdAtEpochMs,
+    complete: missingRequired.length === 0,
+    missingRequired,
+    artifacts,
+  };
+
+  if (Platform.OS !== "web") {
+    await FileSystem.writeAsStringAsync(path, JSON.stringify(manifest, null, 2), {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+  }
+  console.log(`[SESSION] session_manifest.json written: ${path} (complete: ${manifest.complete})`);
+  return { path, manifest };
 }
 
 const CORE_FILES = ["video.mp4", "imu.jsonl", "metadata.json", "qc_report.json", "video_timestamps.jsonl"];

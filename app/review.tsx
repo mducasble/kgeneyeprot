@@ -20,7 +20,8 @@ import { runQCEngine } from "@/lib/qc-engine";
 import { analyzeVideo } from "@/lib/mediapipe-analyzer";
 import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LocalQCReport, QCResult } from "@/lib/qc-types";
-import { writeQCReport, writeMetadata, getSessionFilePaths, getSessionFolderPath, validateSessionPackage } from "@/lib/session-storage";
+import { writeQCReport, writeMetadata, getSessionFilePaths, getSessionFolderPath, validateSessionPackage, writeSessionManifest, buildArtifactFilesList } from "@/lib/session-storage";
+import * as Device from "expo-device";
 import { getIMUFilePath, getIMUStats } from "@/lib/imu-service";
 import { writeVideoTimestamps, writeAllSemanticArtifacts } from "@/lib/session-artifacts";
 import Colors from "@/constants/colors";
@@ -631,17 +632,6 @@ export default function ReviewScreen() {
           }
         }
 
-        const artifactFiles = [
-          "video.mp4",
-          "imu.jsonl",
-          "metadata.json",
-          "qc_report.json",
-          "video_timestamps.jsonl",
-        ];
-        if (semanticArtifactsAvailable) {
-          artifactFiles.push("hand_landmarks.jsonl", "face_presence.jsonl", "frame_qc_metrics.jsonl");
-        }
-
         const validationWarnings = [...report.warningReasons];
         const validation = await validateSessionPackage(sessionId, imuEstimatedHz, frameTimestampCount).catch(() => ({
           valid: true,
@@ -649,6 +639,31 @@ export default function ReviewScreen() {
           warnings: [] as string[],
         }));
         validationWarnings.push(...validation.warnings);
+
+        const deviceModel = Device.modelName || Device.deviceName || "unknown";
+        const manufacturer = Device.manufacturer || "unknown";
+        const deviceType = Device.deviceType != null
+          ? (Device.deviceType === Device.DeviceType.PHONE ? "phone"
+            : Device.deviceType === Device.DeviceType.TABLET ? "tablet"
+            : Device.deviceType === Device.DeviceType.DESKTOP ? "desktop"
+            : Device.deviceType === Device.DeviceType.TV ? "tv"
+            : "unknown")
+          : "unknown";
+
+        const frameTimestampQualityNote = videoFrameTimestampMode === "native"
+          ? "native timestamps from capture pipeline"
+          : "estimated from videoStartEpochMs, durationMs, and assumed FPS";
+
+        let qcReportPath = "";
+        let metadataPath = "";
+
+        try {
+          qcReportPath = await writeQCReport(sessionId, qcReportData as any);
+        } catch (err) {
+          console.warn("[SESSION] Failed to write QC report:", err);
+        }
+
+        const artifactFiles = await buildArtifactFilesList(sessionId);
 
         const metadata = {
           sessionId,
@@ -665,9 +680,12 @@ export default function ReviewScreen() {
           imuDurationMs,
           imuDroppedSampleEstimate,
           videoFrameTimestampMode,
+          frameTimestampQualityNote,
           estimatedFps,
           frameTimestampCount,
-          deviceModel: "unknown",
+          deviceModel,
+          manufacturer,
+          deviceType,
           osName: Platform.OS,
           osVersion: String(Platform.Version),
           qcSummary: {
@@ -684,14 +702,26 @@ export default function ReviewScreen() {
           warnings: validationWarnings,
         };
 
-        let qcReportPath = "";
-        let metadataPath = "";
-
         try {
-          qcReportPath = await writeQCReport(sessionId, qcReportData as any);
           metadataPath = await writeMetadata(sessionId, metadata as any);
         } catch (err) {
-          console.warn("[SESSION] Failed to write session files:", err);
+          console.warn("[SESSION] Failed to write metadata:", err);
+        }
+
+        let manifestPath = "";
+        try {
+          const { path: mPath, manifest } = await writeSessionManifest(sessionId, sessionFolderPath, sessionStartMs);
+          manifestPath = mPath;
+          if (!manifest.complete) {
+            validationWarnings.push(`Session incomplete — missing required files: ${manifest.missingRequired.join(", ")}`);
+          }
+          const updatedArtifactFiles = await buildArtifactFilesList(sessionId);
+          if (updatedArtifactFiles.length !== artifactFiles.length) {
+            metadata.artifactFiles = updatedArtifactFiles;
+            await writeMetadata(sessionId, metadata as any).catch(() => {});
+          }
+        } catch (err) {
+          console.warn("[SESSION] Failed to write session manifest:", err);
         }
 
         if (mounted) {
@@ -711,11 +741,12 @@ export default function ReviewScreen() {
             handLandmarksPath,
             facePresencePath,
             frameQcMetricsPath,
+            manifestPath,
             frameTimestampCount,
             semanticArtifactsAvailable,
           });
 
-          console.log(`[SESSION] All artifacts saved. QC: ${qcReportPath}, Meta: ${metadataPath}, IMU: ${imuSampleCount}@${imuEstimatedHz.toFixed(1)}Hz, Timestamps: ${frameTimestampCount}, Semantic: ${semanticArtifactsAvailable}`);
+          console.log(`[SESSION] All artifacts saved. QC: ${qcReportPath}, Meta: ${metadataPath}, Manifest: ${manifestPath}, IMU: ${imuSampleCount}@${imuEstimatedHz.toFixed(1)}Hz, Timestamps: ${frameTimestampCount}, Semantic: ${semanticArtifactsAvailable}`);
         }
       }
 

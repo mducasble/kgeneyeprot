@@ -35,6 +35,7 @@ export interface SessionData {
   handLandmarksPath?: string;
   facePresencePath?: string;
   frameQcMetricsPath?: string;
+  manifestPath?: string;
   frameTimestampCount?: number;
   semanticArtifactsAvailable?: boolean;
 }
@@ -66,6 +67,7 @@ export interface Recording {
   handLandmarksPath?: string;
   facePresencePath?: string;
   frameQcMetricsPath?: string;
+  manifestPath?: string;
   frameTimestampCount?: number;
   semanticArtifactsAvailable?: boolean;
 }

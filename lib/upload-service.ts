@@ -23,6 +23,7 @@ export interface SessionFileOptions {
   handLandmarksPath?: string;
   facePresencePath?: string;
   frameQcMetricsPath?: string;
+  manifestPath?: string;
 }
 
 export interface SessionUploadValidation {
@@ -377,6 +378,7 @@ export async function uploadVideoChunked(
     await tryUploadFile(sessionFiles.handLandmarksPath, `sessions/${sessionId}/hand_landmarks.jsonl`, "application/x-ndjson", token, "hand_landmarks.jsonl");
     await tryUploadFile(sessionFiles.facePresencePath, `sessions/${sessionId}/face_presence.jsonl`, "application/x-ndjson", token, "face_presence.jsonl");
     await tryUploadFile(sessionFiles.frameQcMetricsPath, `sessions/${sessionId}/frame_qc_metrics.jsonl`, "application/x-ndjson", token, "frame_qc_metrics.jsonl");
+    await tryUploadFile(sessionFiles.manifestPath, `sessions/${sessionId}/session_manifest.json`, "application/json", token, "session_manifest.json");
   }
 
   return location;
