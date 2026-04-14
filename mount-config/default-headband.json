@@ -1,0 +1,6 @@
+{
+  "mountType": "forehead_headband",
+  "translationMeters": { "x": 0.03, "y": 0.02, "z": 0.06 },
+  "rotationEulerDeg": { "pitch": -18, "yaw": 0, "roll": 0 },
+  "notes": "Default forehead headband mount. Adjust after physical testing. Translation is camera position relative to head center in meters. Rotation is camera orientation relative to head frame in degrees."
+}

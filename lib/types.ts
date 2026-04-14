@@ -38,6 +38,10 @@ export interface SessionData {
   manifestPath?: string;
   frameTimestampCount?: number;
   semanticArtifactsAvailable?: boolean;
+  headPosePath?: string;
+  cameraCalibrationPath?: string;
+  cameraMountPath?: string;
+  advancedCaptureEnabled?: boolean;
 }
 
 export interface Recording {
@@ -70,4 +74,8 @@ export interface Recording {
   manifestPath?: string;
   frameTimestampCount?: number;
   semanticArtifactsAvailable?: boolean;
+  headPosePath?: string;
+  cameraCalibrationPath?: string;
+  cameraMountPath?: string;
+  advancedCaptureEnabled?: boolean;
 }

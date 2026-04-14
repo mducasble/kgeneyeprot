@@ -24,6 +24,9 @@ export interface SessionFileOptions {
   facePresencePath?: string;
   frameQcMetricsPath?: string;
   manifestPath?: string;
+  headPosePath?: string;
+  cameraCalibrationPath?: string;
+  cameraMountPath?: string;
 }
 
 export interface SessionUploadValidation {
@@ -379,6 +382,9 @@ export async function uploadVideoChunked(
     await tryUploadFile(sessionFiles.facePresencePath, `sessions/${sessionId}/face_presence.jsonl`, "application/x-ndjson", token, "face_presence.jsonl");
     await tryUploadFile(sessionFiles.frameQcMetricsPath, `sessions/${sessionId}/frame_qc_metrics.jsonl`, "application/x-ndjson", token, "frame_qc_metrics.jsonl");
     await tryUploadFile(sessionFiles.manifestPath, `sessions/${sessionId}/session_manifest.json`, "application/json", token, "session_manifest.json");
+    await tryUploadFile(sessionFiles.headPosePath, `sessions/${sessionId}/head_pose.jsonl`, "application/x-ndjson", token, "head_pose.jsonl");
+    await tryUploadFile(sessionFiles.cameraCalibrationPath, `sessions/${sessionId}/camera_calibration.json`, "application/json", token, "camera_calibration.json");
+    await tryUploadFile(sessionFiles.cameraMountPath, `sessions/${sessionId}/camera_mount.json`, "application/json", token, "camera_mount.json");
   }
 
   return location;

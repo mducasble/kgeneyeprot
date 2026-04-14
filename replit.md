@@ -142,6 +142,9 @@ All timeseries files use `.jsonl` (JSON Lines) format — one JSON object per li
 | `face_presence.jsonl` | face_presence | Per-frame face detection with confidence |
 | `frame_qc_metrics.jsonl` | frame_qc_metrics | Per-frame brightness, blur, detection flags |
 | `session_manifest.json` | manifest | Self-describing session package manifest |
+| `head_pose.jsonl` | head_pose | ARKit head pose (yaw/pitch/roll) timeseries (iOS only) |
+| `camera_calibration.json` | camera_calibration | Intrinsics from ARKit (iOS only) |
+| `camera_mount.json` | camera_mount | Extrinsic mount config (headband translation/rotation) |
 
 ### Session Manifest (`session_manifest.json`)
 A machine-readable manifest for downstream processing. Lists all artifacts that were actually written (not hardcoded). Includes `complete` flag (true only if all required files exist) and `missingRequired` array.
@@ -173,6 +176,17 @@ Built dynamically after all files are written. Only lists files that actually ex
 - `"estimated"`: timestamps inferred from videoStartEpochMs + duration + assumed FPS (current default)
 - `"native"`: true frame timestamps from capture pipeline (not yet available in Expo camera API)
 - `frameTimestampQualityNote` field provides human-readable explanation
+
+### Advanced Capture (iOS Native Module)
+- **Module**: `modules/expo-kgen-advanced-capture/` — local Expo module for ARKit-based capture
+- **Capabilities**: Head pose tracking (yaw/pitch/roll via ARKit FaceTracking), camera intrinsic calibration, scene depth (stub)
+- **Architecture**: Swift native module with `ARKitSessionManager`, `HeadPoseRecorder`, `CameraCalibrationRecorder`, `SceneDepthRecorder` (stub)
+- **Service layer**: `lib/advanced-capture-service.ts` — start/stop, capabilities check, mount config writer, metadata builder
+- **Types**: `lib/advanced-capture-types.ts` — `AdvancedCaptureCapabilities`, `AdvancedSessionResult`, etc.
+- **Graceful fallback**: Returns `supported: false` on non-iOS or missing ARKit. All capture calls are non-blocking with try/catch.
+- **Mount config**: `mount-config/default-headband.json` — default forehead headband extrinsics (translation + Euler rotation)
+- **Integration**: Started in record flow, stopped in review flow. Artifacts uploaded to S3 alongside other session files.
+- **Requires**: `expo prebuild` on Mac → `pod install` → Xcode build for ARKit Swift compilation. Not functional in Expo Go or web.
 
 ### Known Limitations
 - Video frame timestamps are **estimated** (not native) — Expo camera API doesn't expose per-frame hardware timestamps.

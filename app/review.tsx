@@ -26,6 +26,12 @@ import { getIMUFilePath, getIMUStats, getIMUQualityMetrics } from "@/lib/imu-ser
 
 const SYNC_TOLERANCE_MS_THRESHOLD = 5;
 import { writeVideoTimestamps, writeAllSemanticArtifacts } from "@/lib/session-artifacts";
+import {
+  checkAdvancedCapabilities,
+  writeCameraMountConfig,
+  buildAdvancedCaptureMetadata,
+  stopAdvancedCapture,
+} from "@/lib/advanced-capture-service";
 import Colors from "@/constants/colors";
 
 type CheckStatus = "good" | "warning" | "failed";
@@ -635,6 +641,40 @@ export default function ReviewScreen() {
           }
         }
 
+        let advancedResult = null;
+        let cameraMountWritten = false;
+        let headPosePath = "";
+        let cameraCalibrationPath = "";
+        let cameraMountPath = "";
+
+        if (Platform.OS === "ios") {
+          try {
+            advancedResult = await stopAdvancedCapture();
+            if (advancedResult) {
+              const artifacts = advancedResult.generatedArtifacts;
+              if (artifacts.includes("head_pose.jsonl")) {
+                headPosePath = `${sessionFolderPath}head_pose.jsonl`;
+              }
+              if (artifacts.includes("camera_calibration.json")) {
+                cameraCalibrationPath = `${sessionFolderPath}camera_calibration.json`;
+              }
+              console.log(`[AdvancedCapture] Artifacts: ${artifacts.join(", ")}`);
+            }
+          } catch (err) {
+            console.warn("[AdvancedCapture] Stop/collect error:", err);
+          }
+
+          try {
+            cameraMountPath = await writeCameraMountConfig(sessionId);
+            cameraMountWritten = true;
+          } catch (err) {
+            console.warn("[AdvancedCapture] Mount config write error:", err);
+          }
+        }
+
+        const advancedCaps = await checkAdvancedCapabilities();
+        const advancedMeta = buildAdvancedCaptureMetadata(advancedResult, advancedCaps, cameraMountWritten);
+
         const validationWarnings = [...report.warningReasons];
         if (imuQuality.imuSource === "none" && imuSampleCount === 0) {
           validationWarnings.push("IMU produced zero samples — no sensor source available");
@@ -718,6 +758,7 @@ export default function ReviewScreen() {
             hasFacePresence: !!facePresencePath,
             hasFrameQcMetrics: !!frameQcMetricsPath,
           },
+          advancedCapture: advancedMeta,
           sessionFolderPath,
           artifactFiles,
           warnings: validationWarnings,
@@ -765,6 +806,10 @@ export default function ReviewScreen() {
             manifestPath,
             frameTimestampCount,
             semanticArtifactsAvailable,
+            headPosePath: headPosePath || undefined,
+            cameraCalibrationPath: cameraCalibrationPath || undefined,
+            cameraMountPath: cameraMountPath || undefined,
+            advancedCaptureEnabled: advancedMeta.enabled,
           });
 
           console.log(`[SESSION] All artifacts saved. QC: ${qcReportPath}, Meta: ${metadataPath}, Manifest: ${manifestPath}, IMU: ${imuSampleCount}@${imuEstimatedHz.toFixed(1)}Hz, Timestamps: ${frameTimestampCount}, Semantic: ${semanticArtifactsAvailable}`);

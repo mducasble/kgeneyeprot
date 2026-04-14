@@ -39,6 +39,10 @@ import {
   markRecordingStop,
   getSessionTiming,
 } from "@/lib/session-sync-service";
+import {
+  startAdvancedCapture,
+  stopAdvancedCapture,
+} from "@/lib/advanced-capture-service";
 import Colors from "@/constants/colors";
 
 const REQUIRED_ORIENTATION = DEFAULT_QC_THRESHOLDS.requiredOrientation;
@@ -436,6 +440,12 @@ export default function RecordScreen() {
       console.warn("[IMU] Failed to start IMU capture (non-blocking):", err);
     }
 
+    if (Platform.OS === "ios") {
+      startAdvancedCapture(session.sessionId, questId || "").catch((err) =>
+        console.warn("[AdvancedCapture] Start failed (non-blocking):", err),
+      );
+    }
+
     recordingRef.current = true;
     setIsRecording(true);
     setRecordingTime(0);
@@ -542,6 +552,7 @@ export default function RecordScreen() {
       recordingRef.current = false;
       setIsRecording(false);
       await stopIMUCapture().catch(() => {});
+      await stopAdvancedCapture().catch(() => {});
     }
   };
 
@@ -550,6 +561,7 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     stopIMUCapture().catch((err) => console.warn("[IMU] Stop error:", err));
+    stopAdvancedCapture().catch((err) => console.warn("[AdvancedCapture] Stop error:", err));
     markRecordingStop();
 
     cameraRef.current.stopRecording();

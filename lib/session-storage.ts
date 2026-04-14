@@ -95,6 +95,9 @@ const ALL_ARTIFACTS: ArtifactDescriptor[] = [
   { name: "hand_landmarks.jsonl", type: "hand_landmarks", required: false },
   { name: "face_presence.jsonl", type: "face_presence", required: false },
   { name: "frame_qc_metrics.jsonl", type: "frame_qc_metrics", required: false },
+  { name: "head_pose.jsonl", type: "head_pose", required: false },
+  { name: "camera_calibration.json", type: "camera_calibration", required: false },
+  { name: "camera_mount.json", type: "camera_mount", required: false },
 ];
 
 export async function buildArtifactFilesList(sessionId: string): Promise<string[]> {
