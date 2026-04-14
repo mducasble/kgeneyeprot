@@ -1,0 +1,426 @@
+You are working on an existing Expo / React Native app called "KGeN Data Collector App".
+
+The current app already supports:
+- quest-based recording
+- video capture
+- IMU capture
+- QC reports
+- MediaPipe semantic outputs
+- session packaging
+- upload preparation
+
+Your task is to PREPARE the project for a native iOS implementation that I will later compile on my Mac using Xcode.
+
+IMPORTANT CONTEXT
+- The current app is Expo-based and runs in Replit
+- I understand that ARKit and native camera calibration access require native iOS code and will not run in Expo Go
+- I want you to prepare the codebase and project structure so I can open it on my Mac, finish native setup in Xcode, and compile there
+- Do NOT try to keep this limited to Expo Go compatibility
+- Prefer an Expo development build / native module friendly structure
+- Do NOT rewrite the whole app
+- Do NOT remove the existing recording/QC/upload architecture
+- Only extend the current project cleanly
+
+GOAL
+Add native iOS support for:
+1. head pose capture
+2. camera intrinsics
+3. camera extrinsics
+4. optional future depth/LiDAR compatibility
+5. integration with the existing session package
+
+This is needed because the target egocentric data spec requires:
+- head pose or IMU
+- camera intrinsics
+- camera extrinsics relative to head frame
+- synchronized JSON delivery when MCAP is not available
+- MP4/H.264 video and structured metadata
+Use this as the design target. Do not overclaim precision the app cannot truly guarantee. If values are estimated, label them honestly.
+
+==================================================
+1) CREATE IOS NATIVE EXTENSION ARCHITECTURE
+==================================================
+
+Prepare the project for a custom native iOS module.
+
+Use one of these compatible approaches:
+- Expo Modules API preferred
+- otherwise a React Native native module compatible with Expo development builds
+
+Create a dedicated native bridge layer for iOS-only advanced capture.
+
+Suggested module name:
+- KgenAdvancedCaptureModule
+or
+- expo-kgen-advanced-capture
+
+The JS/TS side should expose a clean API like:
+
+getAdvancedCaptureCapabilities(): Promise<{
+  supported: boolean
+  arkitAvailable: boolean
+  worldTrackingAvailable: boolean
+  sceneDepthAvailable: boolean
+  cameraCalibrationAvailable: boolean
+}>
+
+startAdvancedSession(options: {
+  sessionId: string
+  questId: string
+  enableHeadPose: boolean
+  enableCameraCalibration: boolean
+  enableSceneDepth?: boolean
+}): Promise<{ started: boolean }>
+
+stopAdvancedSession(): Promise<{
+  startedAtEpochMs: number
+  stoppedAtEpochMs: number
+  sessionFolderPath: string
+  generatedArtifacts: string[]
+}>
+
+The TypeScript API should be added now, even if some native implementation details are placeholders until Xcode build time.
+
+==================================================
+2) ADD IOS NATIVE FILES / PLACEHOLDERS
+==================================================
+
+Prepare the iOS folder structure and native file stubs so that I can continue on my Mac.
+
+Create iOS-native implementation placeholders for:
+- ARKit session manager
+- camera calibration exporter
+- head pose logger
+- optional scene depth logger
+- file writer for session artifacts
+
+Suggested responsibilities:
+
+A) ARKitSessionManager
+- configures ARWorldTrackingConfiguration
+- checks availability
+- optionally enables sceneDepth if supported
+- exposes current frame camera transform
+- exposes intrinsics
+
+B) HeadPoseRecorder
+- logs ARCamera transform over time
+- converts transform into position + quaternion
+- writes head_pose.jsonl
+
+C) CameraCalibrationRecorder
+- captures intrinsics from ARCamera or AVFoundation
+- records camera calibration artifact to camera_calibration.json
+
+D) CameraMountConfig
+- stores estimated extrinsics relative to head frame
+- writes camera_mount.json
+- must support a manually configured offset/rotation because true camera-to-head extrinsics are mount-specific
+
+E) Optional SceneDepthRecorder
+- if supported, prepares future export of scene depth metadata
+- do not block the main feature if this is not finished
+
+These files can contain TODOs where native implementation needs to be completed in Xcode, but the architecture and interfaces must be real and coherent.
+
+==================================================
+3) DEFINE THE NEW OUTPUT ARTIFACTS
+==================================================
+
+Extend the session package to include these new files for advanced iOS capture:
+
+/sessions/{sessionId}/
+  video.mp4
+  imu.jsonl
+  metadata.json
+  qc_report.json
+  video_timestamps.jsonl
+  hand_landmarks.jsonl
+  face_presence.jsonl
+  frame_qc_metrics.jsonl
+  session_manifest.json
+  head_pose.jsonl
+  camera_calibration.json
+  camera_mount.json
+
+Do not remove the existing artifacts.
+
+New artifact definitions:
+
+A) head_pose.jsonl
+One line per sampled AR frame or capture tick:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "frameIndex": number | null,
+  "positionMeters": { "x": number, "y": number, "z": number },
+  "rotationQuaternion": { "x": number, "y": number, "z": number, "w": number },
+  "trackingState": "normal" | "limited" | "notAvailable"
+}
+
+B) camera_calibration.json
+{
+  "source": "arkit" | "avfoundation" | "estimated",
+  "capturedAtEpochMs": number,
+  "intrinsics": {
+    "fx": number,
+    "fy": number,
+    "cx": number,
+    "cy": number,
+    "matrix3x3": [[number, number, number], [number, number, number], [number, number, number]]
+  },
+  "distortion": {
+    "available": boolean,
+    "model": string | null,
+    "coefficients": number[] | null
+  },
+  "imageReference": {
+    "width": number,
+    "height": number
+  }
+}
+
+C) camera_mount.json
+This represents camera extrinsics relative to head frame.
+Because this is specific to the head mount, support manual configuration.
+{
+  "source": "manual_mount_config",
+  "mountType": "forehead_headband",
+  "capturedAtEpochMs": number,
+  "cameraExtrinsicsRelativeToHead": {
+    "translationMeters": { "x": number, "y": number, "z": number },
+    "rotationEulerDeg": { "pitch": number, "yaw": number, "roll": number }
+  },
+  "notes": string
+}
+
+IMPORTANT:
+- camera intrinsics should come from native APIs when available
+- camera extrinsics relative to head should be treated as mount configuration, not magically inferred
+- if any field is estimated, label it honestly
+
+==================================================
+4) EXTEND TYPESCRIPT TYPES
+==================================================
+
+Create or extend TypeScript models for:
+
+AdvancedCaptureCapabilities
+HeadPoseSample
+CameraCalibration
+CameraMountConfig
+AdvancedCaptureArtifacts
+
+Example:
+
+interface HeadPoseSample {
+  timestampEpochMs: number
+  relativeMs: number
+  frameIndex: number | null
+  positionMeters: { x: number; y: number; z: number }
+  rotationQuaternion: { x: number; y: number; z: number; w: number }
+  trackingState: "normal" | "limited" | "notAvailable"
+}
+
+interface CameraCalibration {
+  source: "arkit" | "avfoundation" | "estimated"
+  capturedAtEpochMs: number
+  intrinsics: {
+    fx: number
+    fy: number
+    cx: number
+    cy: number
+    matrix3x3: number[][]
+  }
+  distortion: {
+    available: boolean
+    model: string | null
+    coefficients: number[] | null
+  }
+  imageReference: {
+    width: number
+    height: number
+  }
+}
+
+interface CameraMountConfig {
+  source: "manual_mount_config"
+  mountType: string
+  capturedAtEpochMs: number
+  cameraExtrinsicsRelativeToHead: {
+    translationMeters: { x: number; y: number; z: number }
+    rotationEulerDeg: { pitch: number; yaw: number; roll: number }
+  }
+  notes?: string
+}
+
+==================================================
+5) INTEGRATE WITH THE CURRENT RECORDING FLOW
+==================================================
+
+Do NOT replace the existing record flow.
+Instead, extend it.
+
+When a quest or device supports advanced iOS capture:
+- detect capabilities
+- optionally enable advanced mode
+- start ARKit-based capture in parallel with recording
+- stop ARKit capture when video stops
+- persist advanced artifacts into the existing session folder
+
+Rules:
+- the current standard flow must still work
+- advanced mode should be feature-gated to iOS
+- Android and unsupported iOS devices must gracefully fall back
+
+Suggested flow:
+1. create session
+2. detect advanced capabilities
+3. if enabled:
+   - start advanced native session
+4. start video
+5. start IMU
+6. on stop:
+   - stop video
+   - stop IMU
+   - stop advanced native session
+7. write/merge artifacts into session folder
+8. continue existing QC and packaging flow
+
+==================================================
+6) UPDATE METADATA AND MANIFEST
+==================================================
+
+Extend metadata.json to include:
+
+"advancedCapture": {
+  "enabled": boolean,
+  "headPoseAvailable": boolean,
+  "cameraCalibrationAvailable": boolean,
+  "cameraMountConfigAvailable": boolean,
+  "sceneDepthAvailable": boolean
+}
+
+Also add:
+- headPoseSampleCount
+- headPoseTrackingQualityNote
+- cameraCalibrationSource
+- cameraExtrinsicsSource
+
+If artifacts are generated, add them to:
+- metadata.artifactFiles
+- session_manifest.json
+
+session_manifest.json should now also support:
+{
+  "name": "head_pose.jsonl",
+  "type": "head_pose",
+  "required": false
+}
+{
+  "name": "camera_calibration.json",
+  "type": "camera_calibration",
+  "required": false
+}
+{
+  "name": "camera_mount.json",
+  "type": "camera_mount",
+  "required": false
+}
+
+==================================================
+7) ADD A MOUNT CONFIGURATION LAYER
+==================================================
+
+Because camera extrinsics relative to head frame depend on the physical mount, prepare a simple configuration system.
+
+Create:
+- a TS config file
+or
+- a local JSON config
+
+Example:
+mount-config/default-headband.json
+
+{
+  "mountType": "forehead_headband",
+  "translationMeters": { "x": 0.03, "y": 0.02, "z": 0.06 },
+  "rotationEulerDeg": { "pitch": -18, "yaw": 0, "roll": 0 }
+}
+
+Requirements:
+- load this into camera_mount.json during advanced capture sessions
+- make it easy for me to adjust later after physical testing
+- clearly document that this is a manual mount calibration
+
+==================================================
+8) ADD IOS PERMISSIONS / CONFIG PREP
+==================================================
+
+Prepare the project config for native iOS compilation.
+
+Tasks:
+- update app config where needed for camera / motion permissions
+- add any Info.plist keys needed for:
+  - camera usage
+  - microphone usage if applicable
+  - motion usage if required
+- add comments or README notes for what still needs to be completed on Mac/Xcode
+
+Do not fake entitlements. Add only what is appropriate and document the rest.
+
+==================================================
+9) DOCUMENT WHAT MUST BE FINISHED IN XCODE
+==================================================
+
+Add a clear README section called:
+"Native iOS Advanced Capture Setup"
+
+It must explain:
+- Expo Go will not support this
+- this requires a development build or native Xcode build
+- where the native files are
+- what needs to be opened in Xcode
+- what APIs are expected to be wired:
+  - ARKit camera transform
+  - ARCamera intrinsics
+  - optional sceneDepth
+- what is still placeholder vs implemented
+
+Be explicit that:
+- head pose comes from ARKit camera pose
+- camera intrinsics come from ARKit/AVFoundation
+- camera extrinsics relative to head are from mount calibration, not automatically inferred
+
+==================================================
+10) IMPLEMENTATION STYLE
+==================================================
+
+- Prefer clean architecture over hacks
+- Leave TODOs only where native implementation truly must be finished on Mac
+- Keep the JS/TS layer usable and typed now
+- Keep the project compilable once native code is completed in Xcode
+- Do not overclaim precision
+- Label estimated values honestly
+
+==================================================
+11) DELIVERABLE
+==================================================
+
+Modify the existing project so that it is READY FOR NATIVE IOS COMPLETION on my Mac.
+
+At the end I want:
+- updated TypeScript models
+- advanced capture service interface
+- iOS native module placeholders/stubs
+- session artifact definitions
+- metadata + manifest extension
+- mount config support
+- README instructions for Xcode completion
+
+The result should prepare the app to capture the missing spec-aligned capabilities:
+- head pose
+- camera intrinsics
+- camera extrinsics relative to head frame
+
+without breaking the current Replit/Expo architecture.
