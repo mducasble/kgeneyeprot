@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
 import type { Recording, UploadStatus, SessionData } from "@/lib/types";
 import type { LocalQCReport } from "@/lib/qc-types";
 
@@ -17,6 +19,47 @@ interface RecordingsContextValue {
 const RecordingsContext = createContext<RecordingsContextValue | null>(null);
 const STORAGE_KEY = "kgen_recordings";
 
+function extractDocDirPrefix(path: string): string | null {
+  const marker = "/Documents/";
+  const idx = path.indexOf(marker);
+  if (idx === -1) return null;
+  return path.substring(0, idx + marker.length);
+}
+
+function rebasePath(path: string, oldPrefix: string, newPrefix: string): string {
+  if (path.startsWith(oldPrefix)) {
+    return newPrefix + path.substring(oldPrefix.length);
+  }
+  return path;
+}
+
+function healRecordingPaths(rec: Recording, currentDocDir: string): Recording {
+  const sample = rec.uri || rec.imuPath || rec.metadataPath;
+  if (!sample) return rec;
+
+  const storedPrefix = extractDocDirPrefix(sample);
+  if (!storedPrefix || storedPrefix === currentDocDir) return rec;
+
+  const rebase = (p?: string) => (p ? rebasePath(p, storedPrefix, currentDocDir) : p);
+
+  return {
+    ...rec,
+    uri: rebase(rec.uri) ?? rec.uri,
+    imuPath: rebase(rec.imuPath),
+    metadataPath: rebase(rec.metadataPath),
+    qcReportPath: rebase(rec.qcReportPath),
+    videoTimestampPath: rebase(rec.videoTimestampPath),
+    handLandmarksPath: rebase(rec.handLandmarksPath),
+    facePresencePath: rebase(rec.facePresencePath),
+    frameQcMetricsPath: rebase(rec.frameQcMetricsPath),
+    manifestPath: rebase(rec.manifestPath),
+    headPosePath: rebase(rec.headPosePath),
+    cameraCalibrationPath: rebase(rec.cameraCalibrationPath),
+    cameraMountPath: rebase(rec.cameraMountPath),
+    sessionFolderPath: rebase(rec.sessionFolderPath),
+  };
+}
+
 export function RecordingsProvider({ children }: { children: ReactNode }) {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +69,12 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
-          setRecordings(JSON.parse(stored));
+          let recs: Recording[] = JSON.parse(stored);
+          if (Platform.OS !== "web" && FileSystem.documentDirectory) {
+            const currentDocDir = FileSystem.documentDirectory;
+            recs = recs.map((r) => healRecordingPaths(r, currentDocDir));
+          }
+          setRecordings(recs);
         }
       } catch {}
       setIsLoading(false);

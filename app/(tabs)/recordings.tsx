@@ -25,6 +25,7 @@ const statusConfig: Record<UploadStatus, { icon: string; label: string; color: s
   uploaded: { icon: "checkmark-circle", label: "Uploaded", color: "#34D399" },
   failed: { icon: "alert-circle-outline", label: "Failed", color: "#F87171" },
   retrying: { icon: "refresh-outline", label: "Retrying", color: "#FBBF24" },
+  file_lost: { icon: "document-outline", label: "File Lost", color: "#94A3B8" },
 };
 
 const qcColors: Record<QCResult, string> = {

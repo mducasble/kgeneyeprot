@@ -27,6 +27,7 @@ const statusConfig: Record<UploadStatus, { icon: string; label: string; color: s
   uploaded: { icon: "checkmark-circle", label: "Uploaded", color: "#34D399" },
   failed: { icon: "alert-circle-outline", label: "Failed", color: "#F87171" },
   retrying: { icon: "refresh-outline", label: "Retrying...", color: "#FBBF24" },
+  file_lost: { icon: "document-outline", label: "File Lost", color: "#94A3B8" },
 };
 
 function UploadItem({
@@ -101,7 +102,16 @@ function UploadItem({
           )}
         </View>
 
-        {(recording.uploadStatus === "failed" || recording.uploadStatus === "queued") ? (
+        {recording.uploadStatus === "file_lost" ? (
+          <View style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#F8717118", opacity: pressed ? 0.6 : 1 }]}
+              onPress={(e) => { e.stopPropagation?.(); onRemove(recording.id); }}
+            >
+              <Ionicons name="trash-outline" size={16} color="#F87171" />
+            </Pressable>
+          </View>
+        ) : (recording.uploadStatus === "failed" || recording.uploadStatus === "queued") ? (
           <View style={styles.actions}>
             <Pressable
               style={({ pressed }) => [styles.actionBtn, { backgroundColor: Colors.primary + "18", opacity: pressed ? 0.6 : 1 }]}
@@ -135,6 +145,8 @@ export default function UploadsScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const recording = recordings.find((r) => r.id === id);
     if (!recording || !token) return;
+    if (recording.uploadStatus === "file_lost") return;
+
     const sessionFiles = recording.sessionId ? {
       sessionId: recording.sessionId,
       imuPath: recording.imuPath,
@@ -153,10 +165,24 @@ export default function UploadsScreen() {
 
     const validation = await validateBeforeUpload(recording.uri, sessionFiles);
     if (!validation.valid) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Upload Blocked", `Cannot upload: ${validation.errors.join(", ")}`, [{ text: "OK" }]);
+      const isFileMissing = validation.errors.some((e) =>
+        e.toLowerCase().includes("no longer exists") || e.toLowerCase().includes("not found"),
+      );
+      if (isFileMissing) {
+        updateUploadStatus(id, "file_lost");
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Video File Lost",
+          "The video file for this recording no longer exists on your device. This can happen when the app is reinstalled. You can remove this entry from the queue.",
+          [{ text: "OK" }],
+        );
+      } else {
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Upload Blocked", `Cannot upload: ${validation.errors.join(", ")}`, [{ text: "OK" }]);
+      }
       return;
     }
+
     updateUploadStatus(id, "uploading");
     try {
       const baseUrl = getApiUrl();
@@ -165,6 +191,20 @@ export default function UploadsScreen() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ questId: recording.questId, recordingId: recording.id }),
       });
+      if (subRes.status === 401) {
+        setProgressMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
+        updateUploadStatus(id, "queued");
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please log in again to continue uploading.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Log In", onPress: () => router.replace("/(auth)/login") },
+          ],
+        );
+        return;
+      }
       if (!subRes.ok) {
         const errBody = await subRes.text().catch(() => "no body");
         throw new Error(`Submission creation failed (${subRes.status}): ${errBody}`);

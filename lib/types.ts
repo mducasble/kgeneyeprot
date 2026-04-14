@@ -17,7 +17,7 @@ export interface Quest {
   difficulty: "easy" | "medium" | "hard";
 }
 
-export type UploadStatus = "queued" | "uploading" | "uploaded" | "failed" | "retrying";
+export type UploadStatus = "queued" | "uploading" | "uploaded" | "failed" | "retrying" | "file_lost";
 
 export interface SessionData {
   sessionId: string;
