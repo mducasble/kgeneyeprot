@@ -150,10 +150,12 @@ function useLiveAnalysis(
           newHints.push({ type: "hand", message: "Keep your hands visible", severity: "warning" });
           newAlertState = "no_hand";
           startHapticLoop("warning");
-          if (alertPlayer) {
-            alertPlayer.seekTo(0).then(() => alertPlayer.play()).catch((e: any) =>
-              console.warn("[Alert] Sound play failed:", e),
-            );
+          try {
+            if (alertPlayer && !alertPlayer.playing) {
+              alertPlayer.play();
+            }
+          } catch (e) {
+            console.warn("[Alert] Sound play error:", e);
           }
         }
       } else {

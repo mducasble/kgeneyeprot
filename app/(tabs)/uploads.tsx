@@ -165,7 +165,10 @@ export default function UploadsScreen() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ questId: recording.questId, recordingId: recording.id }),
       });
-      if (!subRes.ok) throw new Error("Submission creation failed");
+      if (!subRes.ok) {
+        const errBody = await subRes.text().catch(() => "no body");
+        throw new Error(`Submission creation failed (${subRes.status}): ${errBody}`);
+      }
       const subData = await subRes.json();
       let s3Url: string | undefined;
       if (recording.uri && !recording.uri.startsWith("simulated://")) {
