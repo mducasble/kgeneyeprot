@@ -231,7 +231,7 @@ async function uploadVideoNative(
 ): Promise<string> {
   const baseUrl = getApiUrl();
 
-  const fileInfo = await FileSystem.getInfoAsync(videoUri);
+  const fileInfo = await FileSystem.getInfoAsync(videoUri, { size: true });
   if (!fileInfo.exists) throw new Error("Video file not found on device");
   const fileSize = (fileInfo as any).size ?? 0;
   console.log(`[UPLOAD] native video: uri=${videoUri} size=${fileSize} bytes`);
@@ -267,19 +267,24 @@ async function uploadVideoNative(
     ),
   );
 
-  const uploadResult = await Promise.race([
-    FileSystem.uploadAsync(presignedUrl, videoUri, {
-      httpMethod: "PUT",
-      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-      headers: { "Content-Type": contentType },
-    }),
-    timeoutPromise,
-  ]);
-
-  console.log(`[UPLOAD] uploadAsync result: status=${uploadResult.status} body=${uploadResult.body?.substring(0, 500) ?? "(empty)"}`);
+  let uploadResult: { status: number; body: string };
+  try {
+    uploadResult = await Promise.race([
+      FileSystem.uploadAsync(presignedUrl, videoUri, {
+        httpMethod: "PUT",
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: { "Content-Type": contentType },
+      }),
+      timeoutPromise,
+    ]);
+    console.log(`[UPLOAD] uploadAsync result: status=${uploadResult.status} body=${uploadResult.body ?? "(empty)"}`);
+  } catch (uploadErr: any) {
+    console.log(`[UPLOAD] uploadAsync threw: ${uploadErr?.message ?? String(uploadErr)}`);
+    throw uploadErr;
+  }
 
   if (uploadResult.status < 200 || uploadResult.status >= 300) {
-    throw new Error(`Video upload failed (HTTP ${uploadResult.status}): ${uploadResult.body?.substring(0, 400) ?? "no response body"}`);
+    throw new Error(`Video upload failed (HTTP ${uploadResult.status}): ${uploadResult.body ?? "no response body"}`);
   }
 
   onProgress?.({ chunkIndex: 1, totalChunks: 1, bytesUploaded: fileSize, totalBytes: fileSize, phase: "video" });
