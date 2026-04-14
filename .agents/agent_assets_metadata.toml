@@ -12,3 +12,15 @@ id = "9NvvnrG0lBKaAuB3EKGpu"
 uri = "file://s3_sessions_download.tar.gz"
 type = "unspecified"
 title = "S3 Sessions - All Videos + IMU Data (5 sessions, 72MB)"
+
+[[outputs]]
+id = "RX05hh_2LZPeSBhI9iwif"
+uri = "file://downloads/session_mny2wu0bnyoqe1mom.tar.gz"
+type = "unspecified"
+title = "Sessão mny2wu0bnyoqe1mom (136 MB)"
+
+[[outputs]]
+id = "9H3RdsxZv_EeoCbboU415"
+uri = "file://downloads/session_mny320lcr4158vfyk.tar.gz"
+type = "unspecified"
+title = "Sessão mny320lcr4158vfyk (156 MB)"

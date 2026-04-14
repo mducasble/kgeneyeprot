@@ -1,0 +1,49 @@
+{
+  "sessionId": "mny320lcr4158vfyk",
+  "sessionFolderPath": "file:///var/mobile/Containers/Data/Application/5F62DBC6-7533-4773-A5D7-E68E546B2B12/Documents/sessions/mny320lcr4158vfyk/",
+  "createdAtEpochMs": 1776138586752,
+  "complete": true,
+  "missingRequired": [],
+  "artifacts": [
+    {
+      "name": "video.mp4",
+      "type": "video",
+      "required": true
+    },
+    {
+      "name": "imu.jsonl",
+      "type": "imu_timeseries",
+      "required": true
+    },
+    {
+      "name": "metadata.json",
+      "type": "metadata",
+      "required": true
+    },
+    {
+      "name": "qc_report.json",
+      "type": "qc_summary",
+      "required": true
+    },
+    {
+      "name": "video_timestamps.jsonl",
+      "type": "video_timestamps",
+      "required": true
+    },
+    {
+      "name": "hand_landmarks.jsonl",
+      "type": "hand_landmarks",
+      "required": false
+    },
+    {
+      "name": "face_presence.jsonl",
+      "type": "face_presence",
+      "required": false
+    },
+    {
+      "name": "frame_qc_metrics.jsonl",
+      "type": "frame_qc_metrics",
+      "required": false
+    }
+  ]
+}

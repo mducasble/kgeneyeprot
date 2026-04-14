@@ -1,0 +1,45 @@
+{
+  "sessionId": "mny320lcr4158vfyk",
+  "questId": "quest-002",
+  "userId": "local",
+  "sessionStartEpochMs": 1776138586752,
+  "imuStartEpochMs": 1776138586753,
+  "videoStartEpochMs": 1776138586753,
+  "recordingStopEpochMs": 1776138755843,
+  "durationMs": 169755,
+  "imuTargetHz": 100,
+  "imuEstimatedHz": 99.99,
+  "imuSampleCount": 16907,
+  "imuDurationMs": 169083,
+  "imuDroppedSampleEstimate": 1,
+  "videoFrameTimestampMode": "estimated",
+  "frameTimestampQualityNote": "estimated from videoStartEpochMs, durationMs, and assumed FPS",
+  "estimatedFps": 30,
+  "frameTimestampCount": 5093,
+  "deviceModel": "iPhone 17 Pro Max",
+  "manufacturer": "Apple",
+  "deviceType": "phone",
+  "osName": "ios",
+  "osVersion": "26.3.1",
+  "qcSummary": {
+    "result": "passed",
+    "readinessScore": 88.65384908856342
+  },
+  "semanticArtifacts": {
+    "hasHandLandmarks": true,
+    "hasFacePresence": true,
+    "hasFrameQcMetrics": true
+  },
+  "sessionFolderPath": "file:///var/mobile/Containers/Data/Application/5F62DBC6-7533-4773-A5D7-E68E546B2B12/Documents/sessions/mny320lcr4158vfyk/",
+  "artifactFiles": [
+    "video.mp4",
+    "imu.jsonl",
+    "metadata.json",
+    "qc_report.json",
+    "video_timestamps.jsonl",
+    "hand_landmarks.jsonl",
+    "face_presence.jsonl",
+    "frame_qc_metrics.jsonl"
+  ],
+  "warnings": []
+}
