@@ -380,6 +380,7 @@ export default function RecordScreen() {
   const startTimeRef = useRef<number>(0);
   const recordingRef = useRef(false);
   const sessionRef = useRef<{ sessionId: string; sessionStartEpochMs: number } | null>(null);
+  const advancedResultRef = useRef<import("../lib/advanced-capture-types").AdvancedSessionResult | null>(null);
 
   const alertPlayer = useAudioPlayer(ALERT_SOUND_URI);
 
@@ -443,6 +444,7 @@ export default function RecordScreen() {
     }
 
     if (Platform.OS === "ios") {
+      advancedResultRef.current = null;
       startAdvancedCapture(session.sessionId, questId || "").catch((err) =>
         console.warn("[AdvancedCapture] Start failed (non-blocking):", err),
       );
@@ -503,6 +505,18 @@ export default function RecordScreen() {
           }
         }
 
+        const advResult = advancedResultRef.current;
+        const advArtifacts = advResult?.generatedArtifacts ?? [];
+        const headPosePath = advArtifacts.includes("head_pose.jsonl")
+          ? `${sessionFolderPath}head_pose.jsonl`
+          : undefined;
+        const cameraCalibrationPath = advArtifacts.includes("camera_calibration.json")
+          ? `${sessionFolderPath}camera_calibration.json`
+          : undefined;
+        if (advResult) {
+          console.log(`[AdvancedCapture] Result: artifacts=${advArtifacts.join(",") || "(none)"}`);
+        }
+
         const recording = {
           id,
           questId: questId || "",
@@ -520,6 +534,9 @@ export default function RecordScreen() {
           sessionStartEpochMs: timing.sessionStartEpochMs,
           videoStartEpochMs: timing.videoStartEpochMs,
           recordingStopEpochMs: timing.recordingStopEpochMs,
+          headPosePath,
+          cameraCalibrationPath,
+          advancedCaptureEnabled: advResult != null,
           _pendingQC: {
             durationMs,
             stabilityReadings: [...stabilityReadings],
@@ -563,7 +580,9 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     stopIMUCapture().catch((err) => console.warn("[IMU] Stop error:", err));
-    stopAdvancedCapture().catch((err) => console.warn("[AdvancedCapture] Stop error:", err));
+    stopAdvancedCapture()
+      .then((res) => { advancedResultRef.current = res; })
+      .catch((err) => console.warn("[AdvancedCapture] Stop error:", err));
     markRecordingStop();
 
     cameraRef.current.stopRecording();

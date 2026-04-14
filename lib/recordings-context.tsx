@@ -79,6 +79,16 @@ export function RecordingsProvider({ children }: { children: ReactNode }) {
               await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recs)).catch(() => {});
             }
           }
+          // Reset any stuck "uploading" recordings to "queued" — they may have
+          // succeeded on S3 but the app was killed before confirm completed.
+          const resetUploading = recs.map((r) =>
+            r.uploadStatus === "uploading" ? { ...r, uploadStatus: "queued" as const } : r,
+          );
+          const anyStuck = resetUploading.some((r, i) => r !== recs[i]);
+          recs = resetUploading;
+          if (anyStuck) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recs)).catch(() => {});
+          }
           setRecordings(recs);
         }
       } catch {}
