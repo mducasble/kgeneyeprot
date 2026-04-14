@@ -1,0 +1,195 @@
+You are working on an existing Expo/React Native app called "KGeN Data Collector App".
+
+The app already records IMU data to `imu.jsonl`, but the current implementation has synchronization issues:
+- accelerometer and gyroscope samples are being grouped together even when their timestamps do not match closely enough
+- some early gyro samples are zeroed
+- multiple output samples may share the same top-level timestamp even though the internal accel/gyro timestamps differ
+- this creates pseudo-sync instead of true sample alignment
+
+Your task is to PATCH the current IMU pipeline to produce cleaner, better synchronized IMU output.
+
+IMPORTANT:
+- Do NOT rewrite the app
+- Do NOT change the recording flow
+- Do NOT change metadata/qc/upload logic except where needed to support the IMU fix
+- Only improve the IMU capture and serialization quality
+
+==================================================
+1) PREFER DEVICEMOTION WHEN AVAILABLE
+==================================================
+
+Goal:
+- use a single synchronized motion source when possible instead of manually merging separate accelerometer and gyroscope streams
+
+Tasks:
+- check whether Expo DeviceMotion can provide the needed fields with sufficiently high frequency
+- if available, use DeviceMotion as the primary source for IMU output
+- extract:
+  - acceleration
+  - rotationRate
+  - timestamp
+- map them into the existing IMU output schema:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "accel": { "x": number, "y": number, "z": number },
+  "gyro": { "x": number, "y": number, "z": number }
+}
+
+Requirements:
+- preserve the existing `imu.jsonl` format
+- preserve target frequency settings as much as possible
+- compute timestamps consistently
+- document in code whether DeviceMotion timestamps are sourced from a fused motion event
+
+If DeviceMotion does NOT provide sufficient frequency or field quality in this project, fall back to synchronized stream merging as described below.
+
+==================================================
+2) FALLBACK: SYNCHRONIZED MERGING OF ACCEL + GYRO
+==================================================
+
+If separate Accelerometer and Gyroscope streams must still be used:
+
+Implement a proper synchronization buffer.
+
+Create:
+- a rolling buffer for accelerometer samples
+- a rolling buffer for gyroscope samples
+
+For each candidate output sample:
+- match accel and gyro samples by nearest timestamp
+- only emit an IMU row if:
+  abs(accel.timestamp - gyro.timestamp) <= 5ms
+
+Rules:
+- do NOT blindly pair the latest accel with the latest gyro
+- do NOT emit samples where gyro is still zero/uninitialized unless that is truly the measured value during steady state
+- discard unmatched stale samples outside a reasonable window
+- prefer temporal consistency over raw sample count
+
+==================================================
+3) FIX TOP-LEVEL TIMESTAMP SEMANTICS
+==================================================
+
+Current issue:
+- top-level timestampEpochMs may not represent a true synchronized sample instant
+
+Goal:
+- ensure each emitted IMU row has one meaningful timestamp
+
+Rules:
+- when accel and gyro are merged, set:
+  timestampEpochMs = round((accel.timestampEpochMs + gyro.timestampEpochMs) / 2)
+- set:
+  relativeMs = timestampEpochMs - imuStartEpochMs
+- do NOT emit repeated top-level timestamps unless they are genuinely produced by the source stream
+
+==================================================
+4) HANDLE INITIAL SENSOR WARMUP
+==================================================
+
+Current issue:
+- early gyro values may be zero while accel is already streaming
+
+Goal:
+- prevent low-quality startup samples from contaminating the beginning of the session
+
+Tasks:
+- add a short sensor warmup phase before writing IMU rows
+- do not start persisting IMU rows until both motion sources are producing non-empty, timestamped data consistently
+- warmup can be either:
+  - fixed duration (e.g. 100–300 ms)
+  - or readiness-based (preferred)
+
+Readiness-based rule:
+- begin writing only after both accel and gyro have produced at least N valid samples with close timestamp alignment
+
+Do NOT change the external session start semantics.
+If needed, keep `imuStartEpochMs` as the start request time, but add a metadata field for:
+- imuFirstValidSampleEpochMs
+
+==================================================
+5) ADD INTERNAL TIMESTAMP DEBUGGING
+==================================================
+
+For debugging and validation, add optional internal fields during development only:
+
+{
+  "timestampEpochMs": ...,
+  "relativeMs": ...,
+  "accel": {...},
+  "gyro": {...},
+  "_debug": {
+    "accelTimestampEpochMs": number,
+    "gyroTimestampEpochMs": number,
+    "syncDeltaMs": number,
+    "source": "devicemotion" | "merged"
+  }
+}
+
+Requirements:
+- gated behind debug mode
+- excluded from production export unless debug is enabled
+
+==================================================
+6) ADD IMU QUALITY METRICS
+==================================================
+
+Extend metadata generation with:
+
+- imuSource: "devicemotion" | "merged_streams"
+- imuFirstValidSampleEpochMs
+- imuAverageSyncDeltaMs
+- imuMaxSyncDeltaMs
+- imuWarmupDroppedSamples
+- imuZeroGyroDroppedSamples
+
+If sync merging is used:
+- compute average and max accel/gyro timestamp delta for emitted rows
+- store honest values
+
+==================================================
+7) SERIALIZATION RULES
+==================================================
+
+Keep output file:
+- imu.jsonl
+
+Each row must represent one synchronized motion sample:
+{
+  "timestampEpochMs": number,
+  "relativeMs": number,
+  "accel": { "x": number, "y": number, "z": number },
+  "gyro": { "x": number, "y": number, "z": number }
+}
+
+If debug mode is enabled, include `_debug`.
+
+Do NOT change the file format to arrays.
+Keep JSONL.
+
+==================================================
+8) VALIDATION STEP
+==================================================
+
+Before finalizing the IMU artifact:
+- verify sample count > 0
+- verify average sync delta is within acceptable range
+- verify no large block of zero gyro values at the start
+- verify timestamps are monotonic non-decreasing
+
+If a problem is found:
+- add warning to metadata
+- do not hide the issue
+
+==================================================
+9) IMPLEMENTATION GOAL
+==================================================
+
+After this patch:
+- accel and gyro should be truly aligned per emitted row
+- startup zero-gyro noise should be removed or isolated
+- top-level timestamps should represent the synchronized sample instant
+- metadata should describe IMU sync quality honestly
+
+The final result should be a cleaner `imu.jsonl` suitable for better downstream fusion with video and hand pose.

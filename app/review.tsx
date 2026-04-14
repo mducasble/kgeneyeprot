@@ -22,7 +22,9 @@ import { DEFAULT_QC_THRESHOLDS } from "@/lib/qc-types";
 import type { LocalQCReport, QCResult } from "@/lib/qc-types";
 import { writeQCReport, writeMetadata, getSessionFilePaths, getSessionFolderPath, validateSessionPackage, writeSessionManifest, buildArtifactFilesList } from "@/lib/session-storage";
 import * as Device from "expo-device";
-import { getIMUFilePath, getIMUStats } from "@/lib/imu-service";
+import { getIMUFilePath, getIMUStats, getIMUQualityMetrics } from "@/lib/imu-service";
+
+const SYNC_TOLERANCE_MS_THRESHOLD = 5;
 import { writeVideoTimestamps, writeAllSemanticArtifacts } from "@/lib/session-artifacts";
 import Colors from "@/constants/colors";
 
@@ -581,6 +583,7 @@ export default function ReviewScreen() {
         const imuTargetHz = imuFinalStats.targetHz;
         const imuDurationMs = imuFinalStats.durationMs;
         const imuDroppedSampleEstimate = imuFinalStats.droppedSampleEstimate;
+        const imuQuality = getIMUQualityMetrics();
         const estimatedFps = report.fps > 0 ? report.fps : 30;
 
         const qcReportData = {
@@ -633,6 +636,18 @@ export default function ReviewScreen() {
         }
 
         const validationWarnings = [...report.warningReasons];
+        if (imuQuality.imuSource === "none" && imuSampleCount === 0) {
+          validationWarnings.push("IMU produced zero samples — no sensor source available");
+        }
+        if (imuQuality.imuAverageSyncDeltaMs > SYNC_TOLERANCE_MS_THRESHOLD) {
+          validationWarnings.push(`IMU average sync delta ${imuQuality.imuAverageSyncDeltaMs.toFixed(1)}ms exceeds tolerance`);
+        }
+        if (imuQuality.imuZeroGyroDroppedSamples > 10) {
+          validationWarnings.push(`IMU dropped ${imuQuality.imuZeroGyroDroppedSamples} zero-gyro startup samples`);
+        }
+        if (imuQuality.imuWarmupDroppedSamples > 50) {
+          validationWarnings.push(`IMU warmup dropped ${imuQuality.imuWarmupDroppedSamples} samples`);
+        }
         const validation = await validateSessionPackage(sessionId, imuEstimatedHz, frameTimestampCount).catch(() => ({
           valid: true,
           errors: [] as string[],
@@ -679,6 +694,12 @@ export default function ReviewScreen() {
           imuSampleCount,
           imuDurationMs,
           imuDroppedSampleEstimate,
+          imuSource: imuQuality.imuSource,
+          imuFirstValidSampleEpochMs: imuQuality.imuFirstValidSampleEpochMs,
+          imuAverageSyncDeltaMs: imuQuality.imuAverageSyncDeltaMs,
+          imuMaxSyncDeltaMs: imuQuality.imuMaxSyncDeltaMs,
+          imuWarmupDroppedSamples: imuQuality.imuWarmupDroppedSamples,
+          imuZeroGyroDroppedSamples: imuQuality.imuZeroGyroDroppedSamples,
           videoFrameTimestampMode,
           frameTimestampQualityNote,
           estimatedFps,

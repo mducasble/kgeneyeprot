@@ -149,8 +149,17 @@ A machine-readable manifest for downstream processing. Lists all artifacts that 
 ### File Naming Convention
 All timeseries use `.jsonl` extension consistently (not `.ndjson`). Content type for uploads: `application/x-ndjson`.
 
+### IMU Capture Architecture
+- **Primary**: DeviceMotion (fused accel + rotationRate in a single event). No manual sync needed.
+- **Fallback**: Synchronized merging of separate Accelerometer + Gyroscope streams with 5ms tolerance buffer. Only emits rows where `abs(accelTs - gyroTs) <= 5ms`.
+- **Warmup**: Filters zero-gyro startup noise. Does not emit until gyroscope produces non-zero values.
+- **Timestamps**: Calibrated from sensor event timestamps (monotonic → epoch via offset computed at first sample). `timestampEpochMs` = average of accel and gyro timestamps for each emitted row.
+- **Auto-fallback**: If DeviceMotion produces < 5 valid samples in first 2s, automatically switches to merged streams.
+- **Quality metrics in metadata**: `imuSource`, `imuFirstValidSampleEpochMs`, `imuAverageSyncDeltaMs`, `imuMaxSyncDeltaMs`, `imuWarmupDroppedSamples`, `imuZeroGyroDroppedSamples`.
+- **Debug fields**: `_debug` object with per-sample sync detail, gated behind `__DEV__` (excluded from production JSONL).
+
 ### Artifact Details
-- **imu.jsonl**: Direct sensor callback sampling at ~100Hz. Fields: `timestampEpochMs`, `relativeMs`, `accel{x,y,z}`, `gyro{x,y,z}`.
+- **imu.jsonl**: Fused or synchronized sensor data at ~100Hz. Fields: `timestampEpochMs`, `relativeMs`, `accel{x,y,z}`, `gyro{x,y,z}`. Each row represents one truly synchronized motion sample.
 - **video_timestamps.jsonl**: Frame timing (mode: "estimated"). `frameTimestampQualityNote` in metadata explains the method used.
 - **hand_landmarks.jsonl**: Full 21-point MediaPipe hand landmarks per detected hand, with handedness (Left/Right) and confidence.
 - **face_presence.jsonl**: Boolean face detection with confidence per analyzed frame.
