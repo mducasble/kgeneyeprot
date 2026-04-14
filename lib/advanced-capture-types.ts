@@ -4,6 +4,7 @@ export interface AdvancedCaptureCapabilities {
   worldTrackingAvailable: boolean;
   sceneDepthAvailable: boolean;
   cameraCalibrationAvailable: boolean;
+  nativeCameraAvailable?: boolean;
 }
 
 export interface AdvancedSessionOptions {

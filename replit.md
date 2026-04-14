@@ -179,17 +179,20 @@ Built dynamically after all files are written. Only lists files that actually ex
 
 ### Advanced Capture (iOS Native Module)
 - **Module**: `modules/expo-kgen-advanced-capture/` — local Expo module for ARKit-based capture
-- **Capabilities**: Head pose tracking (yaw/pitch/roll via ARKit FaceTracking), camera intrinsic calibration, scene depth (stub)
-- **Architecture**: Swift native module with `ARKitSessionManager`, `HeadPoseRecorder`, `CameraCalibrationRecorder`, `SceneDepthRecorder` (stub)
-- **Service layer**: `lib/advanced-capture-service.ts` — start/stop, capabilities check, mount config writer, metadata builder
-- **Types**: `lib/advanced-capture-types.ts` — `AdvancedCaptureCapabilities`, `AdvancedSessionResult`, etc.
+- **NEW: Unified Native Camera** (`KGenCameraRecorder.swift`): ARSession as SINGLE camera source. Eliminates `expo-camera` conflict that blocked `camera_calibration.json` and `head_pose.jsonl`.
+  - `KGenVideoWriter.swift` — AVAssetWriter fed from `ARFrame.capturedImage` (H.264 MP4, no copy, hardware timestamps)
+  - `KGenIMUWriter.swift` — CMMotionManager at 100 Hz, writes `imu.jsonl` directly without JS bridge
+  - `KGenCameraRecorder.swift` — orchestrates ARSession + CMMotionManager + AVAssetWriter
+  - `KGenCameraView.swift` — ExpoView wrapping ARSCNView for live preview; session handed to recorder during capture
+- **JS API**: `startNativeCapture(options)` / `stopNativeCapture()` exposed from module. Service layer: `lib/native-camera-service.ts`
+- **Record screen**: Detects `isNativeCameraAvailable()` at runtime. When true: uses `KGenCameraView` for preview, native start/stop recording flow. Falls back to expo-camera on web or non-iOS.
+- **Legacy API** (`startAdvancedSession`/`stopAdvancedSession`): Kept for compatibility; uses `ARKitSessionManager` (ARKit-only, no video).
+- **Types**: `lib/advanced-capture-types.ts` — `AdvancedCaptureCapabilities`, `AdvancedSessionResult`, `KGenNativeRecordingResult`, etc.
 - **Graceful fallback**: Returns `supported: false` on non-iOS or missing ARKit. All capture calls are non-blocking with try/catch.
 - **Mount config**: `mount-config/default-headband.json` — default forehead headband extrinsics (translation + Euler rotation)
-- **Integration**: Started in record flow, stopped in review flow. Artifacts uploaded to S3 alongside other session files.
 - **Requires**: `expo prebuild` on Mac → `pod install` → Xcode build for ARKit Swift compilation. Not functional in Expo Go or web.
 
 ### Known Limitations
-- Video frame timestamps are **estimated** (not native) — Expo camera API doesn't expose per-frame hardware timestamps.
 - IMU frequency depends on device hardware. Target is 100Hz; actual rate reported honestly in metadata.
 - `deviceModel` uses expo-device; falls back to "unknown" only as true last resort.
 

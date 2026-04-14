@@ -14,6 +14,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
+import {
+  KGenCameraView,
+  isNativeCameraAvailable,
+} from "@/modules/expo-kgen-advanced-capture/src/index";
+import {
+  startNativeCameraCapture,
+  stopNativeCameraCapture,
+} from "@/lib/native-camera-service";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useAudioPlayer } from "expo-audio";
@@ -368,6 +376,11 @@ export default function RecordScreen() {
   const { addRecording } = useRecordings();
   const cameraRef = useRef<CameraView>(null);
 
+  // Use the native ARKit camera on iOS when the native module is compiled in.
+  // This eliminates the AVCaptureSession conflict that was blocking camera_calibration.json
+  // and head_pose.jsonl from being written.
+  const useNativeCamera = isNativeCameraAvailable() && Platform.OS === "ios";
+
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
@@ -402,6 +415,8 @@ export default function RecordScreen() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       stopIMUCapture().catch(() => {});
+      // Ensure native capture is also torn down on unmount
+      stopNativeCameraCapture().catch(() => {});
       deactivateKeepAwake("recording");
       if (Platform.OS !== "web") {
         ScreenOrientation.unlockAsync().catch(() => {});
@@ -422,7 +437,129 @@ export default function RecordScreen() {
     }
   }, []);
 
+  // ─── Native camera path ──────────────────────────────────────────────────
+
+  const handleNativeStartRecording = async () => {
+    if (recordingRef.current) return;
+
+    const orientationOk = isOrientationValid(deviceOrientation, REQUIRED_ORIENTATION);
+    if (!orientationOk) {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    const session = createSession();
+    sessionRef.current = session;
+    markIMUStart();
+
+    const { started } = await startNativeCameraCapture(session.sessionId);
+    if (!started) {
+      console.warn("[NativeCamera] Failed to start capture");
+      return;
+    }
+
+    recordingRef.current = true;
+    setIsRecording(true);
+    setRecordingTime(0);
+    startTimeRef.current = Date.now();
+    markVideoStart();
+
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setRecordingTime(elapsed);
+    }, 1000);
+  };
+
+  const handleNativeStopRecording = async () => {
+    if (!recordingRef.current) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    cleanupTimer();
+    markRecordingStop();
+    recordingRef.current = false;
+    setIsRecording(false);
+
+    const durationMs = Date.now() - startTimeRef.current;
+    const result = await stopNativeCameraCapture();
+
+    if (!result) {
+      console.warn("[NativeCamera] stopNativeCameraCapture returned null");
+      return;
+    }
+
+    const sid = sessionRef.current?.sessionId ?? "";
+    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const timing = getSessionTiming();
+
+    let actualFileSize = 0;
+    try {
+      const fi = await FileSystem.getInfoAsync(result.videoPath);
+      actualFileSize = (fi as any).size ?? 0;
+    } catch {}
+
+    console.log(
+      `[NativeCamera] Complete. IMU: ${result.imuSampleCount}@${result.imuEstimatedHz.toFixed(1)}Hz, ` +
+      `HeadPose: ${result.headPoseSampleCount}, Frames: ${result.videoFrameCount}, ` +
+      `Artifacts: [${result.generatedArtifacts.join(",")}]`,
+    );
+
+    const recording = {
+      id,
+      questId: questId || "",
+      questTitle: questTitle || "Unknown Quest",
+      uri: result.videoPath,
+      duration: Math.max(1, Math.floor(durationMs / 1000)),
+      fileSize: actualFileSize,
+      createdAt: Date.now(),
+      uploadStatus: "queued" as const,
+      deviceOrientation: "landscape" as const,
+      sessionId: sid,
+      sessionFolderPath: result.sessionFolderPath,
+      imuSampleCount: result.imuSampleCount,
+      imuEstimatedHz: result.imuEstimatedHz,
+      sessionStartEpochMs: timing.sessionStartEpochMs,
+      videoStartEpochMs: timing.videoStartEpochMs,
+      recordingStopEpochMs: timing.recordingStopEpochMs,
+      headPosePath: result.headPosePath || undefined,
+      cameraCalibrationPath: result.cameraCalibrationPath || undefined,
+      advancedCaptureEnabled: true,
+      _pendingQC: {
+        durationMs,
+        stabilityReadings: [...stabilityReadings],
+        liveFrameCount: 0,
+      },
+    };
+
+    addRecording(recording as any);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.replace({
+      pathname: "/review",
+      params: {
+        recordingId: id,
+        durationMs: String(durationMs),
+        fileSize: String(actualFileSize),
+        orientation: "landscape",
+        questId: questId || "",
+        questTitle: questTitle || "",
+        videoUri: result.videoPath,
+        sessionId: sid,
+        imuSampleCount: String(result.imuSampleCount),
+        imuEstimatedHz: String(result.imuEstimatedHz.toFixed(2)),
+        sessionStartMs: String(timing.sessionStartEpochMs),
+        imuStartMs: String(timing.imuStartEpochMs ?? 0),
+        videoStartMs: String(timing.videoStartEpochMs ?? 0),
+        recordingStopMs: String(timing.recordingStopEpochMs ?? 0),
+      },
+    });
+  };
+
+  // ─── Legacy expo-camera path ─────────────────────────────────────────────
+
   const handleStartRecording = async () => {
+    if (useNativeCamera) return handleNativeStartRecording();
+
     if (!cameraRef.current || recordingRef.current) return;
 
     const orientationOk = isOrientationValid(deviceOrientation, REQUIRED_ORIENTATION);
@@ -576,6 +713,10 @@ export default function RecordScreen() {
   };
 
   const handleStopRecording = () => {
+    if (useNativeCamera) {
+      handleNativeStopRecording();
+      return;
+    }
     if (!cameraRef.current || !recordingRef.current) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -715,7 +856,21 @@ export default function RecordScreen() {
   return (
     <OrientationGate required={REQUIRED_ORIENTATION}>
       <View style={[styles.container, { backgroundColor: "#000" }]}>
-        <CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="video" zoom={zoom}>
+        <View style={styles.camera}>
+          {/* Camera background — native ARKit or expo-camera depending on availability */}
+          {useNativeCamera ? (
+            <KGenCameraView style={StyleSheet.absoluteFill} />
+          ) : (
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              mode="video"
+              zoom={zoom}
+            />
+          )}
+
+          {/* UI overlays */}
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
             <Pressable
               style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]}
@@ -738,15 +893,19 @@ export default function RecordScreen() {
               <Text style={styles.topBarTitle} numberOfLines={1}>{questTitle || "Record"}</Text>
             )}
 
-            <Pressable
-              style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
-            >
-              <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
-            </Pressable>
+            {useNativeCamera ? (
+              <View style={styles.topBtn} />
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
+              >
+                <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
+              </Pressable>
+            )}
           </View>
 
-          <AlertBorder alertState={alertState} />
+          <AlertBorder alertState={useNativeCamera ? "none" : alertState} />
 
           {!isRecording && (
             <View style={styles.precaptureGuide}>
@@ -765,14 +924,16 @@ export default function RecordScreen() {
             </View>
           )}
 
-          <View style={styles.zoomRow}>
-            <ZoomSelector
-              current={zoom}
-              onChange={setZoom}
-              expanded={showZoomPicker}
-              onToggle={() => setShowZoomPicker((v) => !v)}
-            />
-          </View>
+          {!useNativeCamera && (
+            <View style={styles.zoomRow}>
+              <ZoomSelector
+                current={zoom}
+                onChange={setZoom}
+                expanded={showZoomPicker}
+                onToggle={() => setShowZoomPicker((v) => !v)}
+              />
+            </View>
+          )}
 
           <View style={[styles.controls, { paddingBottom: insets.bottom + 30 }]}>
             {isRecording ? (
@@ -794,7 +955,7 @@ export default function RecordScreen() {
               {isRecording ? "Tap to stop" : "Tap to record"}
             </Text>
           </View>
-        </CameraView>
+        </View>
       </View>
     </OrientationGate>
   );
