@@ -50,18 +50,41 @@ if (!fs.existsSync(symlinkDest)) {
   } catch {}
 }
 
-// ─── 2. Inject pod into Podfile ───────────────────────────────────────────────
-// Only the pod declaration is needed — autolinking handles ExpoModulesProvider.
+// ─── 2. Inject pod into Podfile + clean up old post_install hook ──────────────
 
 const podfilePath = path.join(ROOT, "ios", "Podfile");
 const podLine = "  pod 'ExpoKgenAdvancedCapture', :path => '../modules/expo-kgen-advanced-capture'";
 
 if (fs.existsSync(podfilePath)) {
-  const podfile = fs.readFileSync(podfilePath, "utf8");
+  let podfile = fs.readFileSync(podfilePath, "utf8");
+  let changed = false;
+
+  // Add pod declaration if missing
   if (!podfile.includes("ExpoKgenAdvancedCapture")) {
-    const patched = podfile.replace("use_expo_modules!", `use_expo_modules!\n${podLine}`);
-    fs.writeFileSync(podfilePath, patched, "utf8");
+    podfile = podfile.replace("use_expo_modules!", `use_expo_modules!\n${podLine}`);
+    changed = true;
     console.log("patched: ios/Podfile — added ExpoKgenAdvancedCapture pod");
+  }
+
+  // Remove the broken post_install hook injected by previous script versions
+  // It caused "ExpoModulesProvider.swift not found" because it ran before autolinking
+  const brokenHookPattern = /\n\s*system\("cd \.\. && node scripts\/fix-ios-build\.js --patch-provider-only"\)\n/g;
+  if (brokenHookPattern.test(podfile)) {
+    podfile = podfile.replace(brokenHookPattern, "\n");
+    changed = true;
+    console.log("patched: ios/Podfile — removed stale post_install hook");
+  }
+
+  // Also remove any standalone auto-generated post_install block we may have added
+  const autoBlockPattern = /\n# Auto-patch ExpoModulesProvider\.swift[\s\S]*?^end\n/m;
+  if (autoBlockPattern.test(podfile)) {
+    podfile = podfile.replace(autoBlockPattern, "\n");
+    changed = true;
+    console.log("patched: ios/Podfile — removed auto-generated post_install block");
+  }
+
+  if (changed) {
+    fs.writeFileSync(podfilePath, podfile, "utf8");
   }
 }
 
