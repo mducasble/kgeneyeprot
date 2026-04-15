@@ -63,6 +63,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "autolinking": {
+      "nativeModulesDir": "./modules"
     }
   }
 }

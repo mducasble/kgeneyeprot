@@ -1,0 +1,208 @@
+warning: (arm64) /Users/mducasble/Library/Developer/Xcode/DerivedData/KGeNDataCollector-gowpgtnyotqmzkexfkkcalcsglyn/Build/Products/Debug-iphoneos/KGeNDataCollector.app/KGeNDataCollector empty dSYM file detected, dSYM was created with an executable with no debug info.
+`UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+_setUpFeatureFlags called with release level 2
+🟢 Registering module 'ExpoModulesCoreJSLogger'
+🟢 Registering module 'ExpoFetchModule'
+🟢 Registering module 'ExpoAsset'
+🟢 Registering module 'ExpoAudio'
+🟢 Registering module 'ExpoVideoView'
+🟢 Registering module 'ExpoBlurView'
+🟢 Registering module 'ExpoCamera'
+🟢 Registering module 'ExponentConstants'
+🟢 Registering module 'ExpoCrypto'
+nw_socket_handle_socket_event [C6:1] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C6 192.168.15.5:8097 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: en0[802.11], ipv4, ipv6, dns, uses wifi, LQM: moderate)] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C6] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x1507a1360 Failed : error 0:61 [61]
+nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_connected_local_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+nw_connection_copy_connected_remote_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+🟢 Registering module 'ExpoDevice'
+🟢 Registering module 'FileSystem'
+🟢 Registering module 'ExponentFileSystem'
+🟢 Registering module 'ExpoFontLoader'
+🟢 Registering module 'ExpoFontUtils'
+🟢 Registering module 'ExpoGlassEffect'
+🟢 Registering module 'ExpoHaptics'
+🟢 Registering module 'ExpoImage'
+🟢 Registering module 'ExponentImagePicker'
+🟢 Registering module 'ExpoKeepAwake'
+🟢 Registering module 'ExpoLinearGradient'
+🟢 Registering module 'ExpoLinking'
+🟢 Registering module 'ExpoLocation'
+🟢 Registering module 'ExpoHead'
+🟢 Registering module 'ExpoRouterNativeLinkPreview'
+🟢 Registering module 'ExpoScreenOrientation'
+🟢 Registering module 'ExpoSecureStore'
+🟢 Registering module 'ExponentAccelerometer'
+🟢 Registering module 'ExpoBarometer'
+🟢 Registering module 'ExponentDeviceMotion'
+🟢 Registering module 'ExponentGyroscope'
+🟢 Registering module 'ExponentMagnetometer'
+🟢 Registering module 'ExponentMagnetometerUncalibrated'
+🟢 Registering module 'ExponentPedometer'
+🟢 Registering module 'ExpoSplashScreen'
+🟢 Registering module 'SymbolModule'
+🟢 Registering module 'ExpoSystemUI'
+🟢 Registering module 'ExpoVideoThumbnails'
+🟢 Registering module 'ExpoWebBrowser'
+🟢 Creating JS object for module 'ExpoModulesCoreJSLogger'
+🟢 Creating JS object for module 'ExponentConstants'
+🟢 Creating JS object for module 'ExpoRouterNativeLinkPreview'
+Unbalanced calls start/end for tag 20
+Unbalanced calls start/end for tag 19
+Running "main" with {"rootTag":11,"initialProps":null,"fabric":true}
+🟢 Creating JS object for module 'ExpoBlurView'
+🟢 Creating JS object for module 'ExpoLinearGradient'
+🟢 Creating JS object for module 'ExpoSecureStore'
+🟢 Creating JS object for module 'ExpoFetchModule'
+🟢 Creating JS object for module 'ExpoGlassEffect'
+🟢 Creating JS object for module 'ExponentFileSystem'
+🟢 Creating JS object for module 'ExpoSplashScreen'
+🟢 Creating JS object for module 'ExpoCamera'
+'[ExpoKgenAdvancedCapture] ❌ Native module NOT found — will use legacy path.', [Error: Cannot find native module 'ExpoKgenAdvancedCapture'], { [Stack] name: 'Stack' }
+🟢 Creating JS object for module 'ExpoAudio'
+🟢 Creating JS object for module 'ExponentDeviceMotion'
+🟢 Creating JS object for module 'ExpoVideoView'
+'[expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.', { [Stack] name: 'Stack' }
+🟢 Creating JS object for module 'ExpoDevice'
+🟢 Creating JS object for module 'ExpoLinking'
+🟢 Creating JS object for module 'ExpoKeepAwake'
+🟢 Creating JS object for module 'ExpoFontLoader'
+🟢 Creating JS object for module 'ExpoAsset'
+WebContent process (0x12c09c0c0) took 3.487283 seconds to launch
+Could not create a sandbox extension for '/var/containers/Bundle/Application/F3EBD838-81BF-40AB-B8E1-8174B1F411D3/KGeNDataCollector.app'
+GPU process (0x12c0f01e0) took 3.484634 seconds to launch
+<0x1506261c0> Gesture: System gesture gate timed out.
+0x12c09c0c0 - [PID=3875] WebProcessProxy::didBecomeUnresponsive:
+0x150c6c718 - [pageProxyID=9, webPageID=10, PID=3875] WebPageProxy::processDidBecomeUnresponsive:
+Networking process (0x12c138100) took 4.382059 seconds to launch
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0414 23:39:18.963739 1835757568 UIManagerBinding.cpp:135] instanceHandle is null, event of type topTouchEnd will be dropped
+WebContent[3875] Unable to hide query parameters from script (missing data)
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+Reporter disconnected. { function=sendMessage, reporterID=16608638533633 }
+<0x1506261c0> Gesture: System gesture gate timed out.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+🟢 Creating JS object for module 'ExpoHaptics'
+I0414 23:39:49.034858 1835757568 UIManagerBinding.cpp:135] instanceHandle is null, event of type topLayout will be dropped
+(501) Invalidation handler invoked, clearing connection
+(501) personaAttributesForPersonaType for type:0 failed with error Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.mobile.usermanagerd.xpc was invalidated from this process." UserInfo={NSDebugDescription=The connection to service named com.apple.mobile.usermanagerd.xpc was invalidated from this process.}
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+I0414 23:39:49.631688 1835757568 UIManagerBinding.cpp:135] instanceHandle is null, event of type topDisappear will be dropped
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+🟢 Creating JS object for module 'ExpoScreenOrientation'
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+🟢 Creating JS object for module 'ExponentAccelerometer'
+{"msg":"#Warning Error reading file", "file":"\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist", "error":"Error Domain=NSCocoaErrorDomain Code=257 \"The file “com.apple.CoreMotion.plist” couldn’t be opened because you don’t have permission to view it.\" UserInfo={NSFilePath=\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist, NSURL=file:\/\/\/\/private\/var\/Managed%20Preferences\/mobile\/com.apple.CoreMotion.plist, NSUnderlyingError=0x15184c210 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}"}
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+[SYNC] Session created: mnzg0a1qgjciqsm1u at 1776220806878
+[IMU] DeviceMotion capture started (target 100Hz, fallback check in 2000ms)
+[SYNC] IMU start: 1776220806885
+[SYNC] Video start: 1776220806886
+[AdvancedCapture] Not supported on this device — skipping
+[IMU] DeviceMotion produced only 0 valid samples in 2000ms — falling back to merged streams
+🟢 Creating JS object for module 'ExponentGyroscope'
+[IMU] Merged stream capture started (target 100Hz, sync tolerance 5ms)
+<<<< FigCaptureSessionRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSessionRemote.m:910) - (err=-12784)
+[IMU] Stopped. Source: merged_streams, Samples: 826, Duration: 11191ms, Hz: 73.8, Dropped (est): 293, AvgSync: 3.71ms, MaxSync: 4.00ms, WarmupDropped: 0, ZeroGyro: 0
+[SYNC] Recording stop: 1776220818078
+[IMU] Merged 2 batch files into file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/imu.jsonl
+[SESSION] Recording complete. Session: mnzg0a1qgjciqsm1u, IMU samples: 826, Hz: 73.8
+[RECORD] Video saved to session folder: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/video.mp4
+[AdvancedCapture] No result — native module not available or session failed
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+🟢 Creating JS object for module 'ExpoVideoThumbnails'
+[MediaPipe] Extracted 11/11 frames for bridge analysis
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+[MediaPipe] Bridge analysis done: 11 frames | hands=36% | faces=0%
+[SESSION] video_timestamps.jsonl written: 354 frames
+[SESSION] Semantic artifacts written (hand_landmarks, face_presence, frame_qc_metrics)
+[AdvancedCapture] camera_mount.json written: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/camera_mount.json
+[SESSION] qc_report.json written: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/qc_report.json
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/metadata.json
+[SESSION] session_manifest.json written: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/session_manifest.json (complete: true)
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/metadata.json
+'[SESSION] Data saved for recording 1776220818679e1zlqafuj:', 'mnzg0a1qgjciqsm1u'
+[SESSION] All artifacts saved. QC: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/qc_report.json, Meta: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/metadata.json, Manifest: file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/session_manifest.json, IMU: 826@73.8Hz, Timestamps: 354, Semantic: true
+⚠️ \^[[33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+I0414 23:40:28.666714 1835757568 UIManagerBinding.cpp:135] instanceHandle is null, event of type topWillDisappear will be dropped
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/video.mp4 size=8575690 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+[UPLOAD] uploadAsync result: status=200 body=
+'[UPLOAD] imu.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/imu.jsonl]
+'[UPLOAD] metadata.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/metadata.json]
+'[UPLOAD] qc_report.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/qc_report.json]
+'[UPLOAD] video_timestamps.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/video_timestamps.jsonl]
+'[UPLOAD] hand_landmarks.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/hand_landmarks.jsonl]
+'[UPLOAD] face_presence.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/face_presence.jsonl]
+'[UPLOAD] frame_qc_metrics.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/frame_qc_metrics.jsonl]
+'[UPLOAD] session_manifest.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/session_manifest.json]
+'[UPLOAD] camera_mount.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzg0a1qgjciqsm1u/camera_mount.json]
+'[UPLOAD] Failed for 1776220818679e1zlqafuj:', 'Confirmation failed'
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+🟢 Posting 'appBecomesActive' event to registered modules
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/15C40D0A-1B15-40B6-A450-D4DE2009E54E/Documents/sessions/mnzg0a1qgjciqsm1u/video.mp4 size=8575690 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
