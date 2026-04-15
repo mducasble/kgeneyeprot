@@ -1,18 +1,18 @@
 const fs = require("fs");
 const path = require("path");
 
+const ROOT = path.join(__dirname, "..");
+
 function fixFile(relPath, oldText, newText) {
-  const fullPath = path.join(__dirname, "..", relPath);
-  if (!fs.existsSync(fullPath)) {
-    return;
-  }
+  const fullPath = path.join(ROOT, relPath);
+  if (!fs.existsSync(fullPath)) return;
   const original = fs.readFileSync(fullPath, "utf8");
-  if (!original.includes(oldText)) {
-    return;
-  }
+  if (!original.includes(oldText)) return;
   fs.writeFileSync(fullPath, original.replace(oldText, newText), "utf8");
   console.log(`patched: ${relPath}`);
 }
+
+// ─── expo-file-system patches ──────────────────────────────────────────────────
 
 fixFile(
   "node_modules/expo-file-system/ios/FileSystemModule.swift",
@@ -26,70 +26,63 @@ fixFile(
   "guard (fileSystemManager as? EXFilePermissionModuleInterface)?.getPathPermissions(path).contains(flag) ?? true else {"
 );
 
-// ─── 1. Inject ExpoKgenAdvancedCapture pod into Podfile ───────────────────────
+// ─── 1. Symlink node_modules/expo-kgen-advanced-capture ───────────────────────
+// This lets Expo's autolinking discover the local native module and register
+// ExpoKgenAdvancedCaptureModule in ExpoModulesProvider.swift when pod install runs.
 
-const podfilePath = path.join(__dirname, "..", "ios", "Podfile");
+const symlinkDest = path.join(ROOT, "node_modules", "expo-kgen-advanced-capture");
+const symlinkTarget = path.join(ROOT, "modules", "expo-kgen-advanced-capture");
+
+if (!fs.existsSync(symlinkDest)) {
+  try {
+    fs.symlinkSync(symlinkTarget, symlinkDest, "dir");
+    console.log("created: node_modules/expo-kgen-advanced-capture -> modules/expo-kgen-advanced-capture");
+  } catch (e) {
+    console.warn("[ExpoKgen] Could not create symlink:", e.message);
+  }
+} else {
+  // Make sure the symlink still points to the right place
+  try {
+    const stat = fs.lstatSync(symlinkDest);
+    if (!stat.isSymbolicLink()) {
+      console.log("[ExpoKgen] node_modules/expo-kgen-advanced-capture exists but is not a symlink — skipping");
+    }
+  } catch {}
+}
+
+// ─── 2. Inject pod into Podfile ───────────────────────────────────────────────
+// Only the pod declaration is needed — autolinking handles ExpoModulesProvider.
+
+const podfilePath = path.join(ROOT, "ios", "Podfile");
 const podLine = "  pod 'ExpoKgenAdvancedCapture', :path => '../modules/expo-kgen-advanced-capture'";
-
-const postInstallHook = `
-# Auto-patch ExpoModulesProvider.swift to register local native modules
-post_install do |installer|
-  system("cd .. && node scripts/fix-ios-build.js --patch-provider-only")
-  ReactNativePodsUtils.fix_react_include_paths(installer) rescue nil
-  ReactNativePodsUtils.apply_xcode_14_workaround(installer) rescue nil
-end`;
 
 if (fs.existsSync(podfilePath)) {
   const podfile = fs.readFileSync(podfilePath, "utf8");
-
-  let updated = podfile;
-  let changed = false;
-
   if (!podfile.includes("ExpoKgenAdvancedCapture")) {
-    updated = updated.replace("use_expo_modules!", `use_expo_modules!\n${podLine}`);
-    changed = true;
+    const patched = podfile.replace("use_expo_modules!", `use_expo_modules!\n${podLine}`);
+    fs.writeFileSync(podfilePath, patched, "utf8");
     console.log("patched: ios/Podfile — added ExpoKgenAdvancedCapture pod");
-  }
-
-  if (!podfile.includes("patch-provider-only")) {
-    // Remove any existing post_install block that doesn't have our hook, then append ours
-    // Only add if there's no post_install at all (to avoid duplicates)
-    if (!podfile.includes("post_install do")) {
-      updated = updated + postInstallHook + "\n";
-      changed = true;
-      console.log("patched: ios/Podfile — added post_install hook");
-    } else {
-      // Insert our command into the existing post_install block
-      updated = updated.replace(
-        /post_install do \|installer\|/,
-        `post_install do |installer|\n  system("cd .. && node scripts/fix-ios-build.js --patch-provider-only")`
-      );
-      changed = true;
-      console.log("patched: ios/Podfile — injected provider patch into post_install");
-    }
-  }
-
-  if (changed) {
-    fs.writeFileSync(podfilePath, updated, "utf8");
   }
 }
 
-// ─── 2. Patch ExpoModulesProvider.swift ──────────────────────────────────────
+// ─── 3. Direct ExpoModulesProvider.swift patch (fallback) ────────────────────
+// Runs when called with --patch-provider or --patch-provider-only.
+// Use this AFTER pod install if the symlink approach above did not work:
+//   node scripts/fix-ios-build.js --patch-provider
 
-const patchProviderOnly = process.argv.includes("--patch-provider-only");
+const patchProvider = process.argv.includes("--patch-provider") ||
+                      process.argv.includes("--patch-provider-only");
 
-function patchExpoModulesProvider() {
-  const iosDir = path.join(__dirname, "..", "ios");
+if (patchProvider) {
+  const iosDir = path.join(ROOT, "ios");
   if (!fs.existsSync(iosDir)) {
-    if (!patchProviderOnly) {
-      console.log("[ExpoKgen] ios/ not found — run this script from your Mac after pod install");
-    }
-    return;
+    console.log("[ExpoKgen] ios/ not found — are you on the Mac?");
+    process.exit(0);
   }
 
-  // Recursively search for ExpoModulesProvider.swift (skip Pods/ to avoid patching the wrong file)
+  // Search for ExpoModulesProvider.swift (skip Pods/ and DerivedData/)
   function findProvider(dir, depth = 0) {
-    if (depth > 4) return null;
+    if (depth > 5) return null;
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
@@ -114,21 +107,25 @@ function patchExpoModulesProvider() {
   const providerPath = findProvider(iosDir);
 
   if (!providerPath) {
-    console.log("[ExpoKgen] ExpoModulesProvider.swift not found.");
-    console.log("[ExpoKgen] Run 'cd ios && pod install' first, then re-run this script.");
-    return;
+    // List ios/ contents to help diagnose
+    console.log("[ExpoKgen] ExpoModulesProvider.swift not found. Contents of ios/:");
+    try {
+      fs.readdirSync(iosDir).forEach((f) => console.log("  ", f));
+    } catch {}
+    console.log("[ExpoKgen] Run 'cd ios && pod install' first.");
+    process.exit(1);
   }
 
   const content = fs.readFileSync(providerPath, "utf8");
 
   if (content.includes("ExpoKgenAdvancedCaptureModule")) {
-    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift already has ExpoKgenAdvancedCaptureModule");
-    return;
+    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift already contains ExpoKgenAdvancedCaptureModule");
+    process.exit(0);
   }
 
-  // Pattern 1: ClassName.self, (Expo SDK 50+ New Architecture format)
+  // Try .self, pattern (Expo SDK 50+ New Architecture)
   const selfPattern = /^(\s+)(\w+\.self,)/m;
-  // Pattern 2: ClassName(), (older format)
+  // Try instance pattern (older format)
   const instancePattern = /^(\s+)(\w+\(\),)/m;
 
   const m1 = content.match(selfPattern);
@@ -138,21 +135,20 @@ function patchExpoModulesProvider() {
     const indent = m1[1];
     const patched = content.replace(selfPattern, `${indent}ExpoKgenAdvancedCaptureModule.self,\n${indent}${m1[2]}`);
     fs.writeFileSync(providerPath, patched, "utf8");
-    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched (Pattern 1 — .self)");
+    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched — ExpoKgenAdvancedCaptureModule added");
+    console.log("[ExpoKgen]    Path:", providerPath);
     console.log("[ExpoKgen]    → Clean Xcode build required: ⌘⇧K then ⌘R");
   } else if (m2) {
     const indent = m2[1];
     const patched = content.replace(instancePattern, `${indent}ExpoKgenAdvancedCaptureModule(),\n${indent}${m2[2]}`);
     fs.writeFileSync(providerPath, patched, "utf8");
-    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched (Pattern 2 — instance)");
+    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched — ExpoKgenAdvancedCaptureModule added");
+    console.log("[ExpoKgen]    Path:", providerPath);
     console.log("[ExpoKgen]    → Clean Xcode build required: ⌘⇧K then ⌘R");
   } else {
-    // Fallback: dump first 600 chars so we can diagnose
-    console.log("[ExpoKgen] ⚠️  Could not find insertion point in ExpoModulesProvider.swift");
-    console.log("[ExpoKgen]    First 600 chars of file:");
-    console.log(content.substring(0, 600));
-    console.log("[ExpoKgen]    File path:", providerPath);
+    console.log("[ExpoKgen] ⚠️ Could not auto-patch. Showing first 800 chars of provider file:");
+    console.log(content.substring(0, 800));
+    console.log("[ExpoKgen]    Path:", providerPath);
+    console.log("[ExpoKgen]    Add manually: ExpoKgenAdvancedCaptureModule.self (or ExpoKgenAdvancedCaptureModule())");
   }
 }
-
-patchExpoModulesProvider();
