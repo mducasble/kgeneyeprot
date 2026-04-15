@@ -12,8 +12,6 @@ Pod::Spec.new do |s|
 
   s.dependency 'ExpoModulesCore'
 
-  # DIAGNOSTIC: Only compile the module file to isolate registration issue.
-  # Other Swift files are temporarily excluded to test if they interfere.
-  # To restore: change back to 'ios/**/*.swift'
-  s.source_files   = 'ios/ExpoKgenAdvancedCaptureModule.swift'
+  s.source_files   = 'ios/**/*.swift'
+  s.frameworks     = 'ARKit', 'SceneKit', 'AVFoundation', 'CoreMotion'
 end

@@ -1,0 +1,134 @@
+mducasble@MacBook-Pro-de-Mark kgeneyeprot % echo "=== 1. Symlink ===" && ls -la node_modules/expo-kgen-advanced-capture && echo "=== 2. Module files ===" && ls modules/expo-kgen-advanced-capture/ && echo "=== 3. Autolinking ===" && npx expo-modules-autolinking resolve --platform ios 2>&1 | grep -i -A2 "kgen" && echo "=== 4. Autolinking (if not found) ===" && npx expo-modules-autolinking resolve --platform ios 2>&1 | head -5 && echo "=== 5. Podfile hook ===" && grep -c "ExpoKgen" ios/Podfile
+=== 1. Symlink ===
+lrwxr-xr-x  1 mducasble  staff  37 15 abr 01:13 node_modules/expo-kgen-advanced-capture -> ../modules/expo-kgen-advanced-capture
+=== 2. Module files ===
+expo-module.config.json		ExpoKgenAdvancedCapture.podspec	package.json			src
+=== 3. Autolinking ===
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-asset/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-audio/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-av/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-blur/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-camera/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-constants/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-crypto/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-device/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-file-system/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-font/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-glass-effect/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-haptics/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-image/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-image-loader/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-image-picker/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-keep-awake/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-linear-gradient/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-linking/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-location/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-modules-core'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-router/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-screen-orientation/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-secure-store/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-sensors/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-splash-screen/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-symbols/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-system-ui/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-video-thumbnails/ios'
+        }
+      ],
+--
+          podspecDir: '/Users/mducasble/Desktop/kgeneyeprot/node_modules/expo-web-browser/ios'
+        }
+      ],
+=== 4. Autolinking (if not found) ===
+{
+  extraDependencies: [],
+  coreFeatures: [],
+  modules: [
+    {
+=== 5. Podfile hook ===
+7
+mducasble@MacBook-Pro-de-Mark kgeneyeprot % 
