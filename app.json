@@ -19,7 +19,11 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to record quest videos.",
         "NSMicrophoneUsageDescription": "This app needs microphone access to record audio with quest videos.",
-        "NSMotionUsageDescription": "This app uses motion sensors for IMU data capture and ARKit-based head pose tracking during quest recordings."
+        "NSMotionUsageDescription": "This app uses motion sensors for IMU data capture and ARKit-based head pose tracking during quest recordings.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
