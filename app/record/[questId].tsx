@@ -394,6 +394,7 @@ export default function RecordScreen() {
   const recordingRef = useRef(false);
   const sessionRef = useRef<{ sessionId: string; sessionStartEpochMs: number } | null>(null);
   const advancedResultRef = useRef<import("../lib/advanced-capture-types").AdvancedSessionResult | null>(null);
+  const advancedStopPromiseRef = useRef<Promise<import("../lib/advanced-capture-types").AdvancedSessionResult | null> | null>(null);
 
   const alertPlayer = useAudioPlayer(ALERT_SOUND_URI);
 
@@ -642,7 +643,13 @@ export default function RecordScreen() {
           }
         }
 
-        const advResult = advancedResultRef.current;
+        // Await the advanced capture stop (started in handleStopRecording) — fixes race condition
+        const advResult = advancedStopPromiseRef.current
+          ? await advancedStopPromiseRef.current
+          : advancedResultRef.current;
+        advancedStopPromiseRef.current = null;
+        advancedResultRef.current = null;
+
         const advArtifacts = advResult?.generatedArtifacts ?? [];
         const headPosePath = advArtifacts.includes("head_pose.jsonl")
           ? `${sessionFolderPath}head_pose.jsonl`
@@ -652,6 +659,8 @@ export default function RecordScreen() {
           : undefined;
         if (advResult) {
           console.log(`[AdvancedCapture] Result: artifacts=${advArtifacts.join(",") || "(none)"}`);
+        } else {
+          console.log("[AdvancedCapture] No result — native module not available or session failed");
         }
 
         const recording = {
@@ -721,9 +730,10 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     stopIMUCapture().catch((err) => console.warn("[IMU] Stop error:", err));
-    stopAdvancedCapture()
-      .then((res) => { advancedResultRef.current = res; })
-      .catch((err) => console.warn("[AdvancedCapture] Stop error:", err));
+    advancedStopPromiseRef.current = stopAdvancedCapture().catch((err) => {
+      console.warn("[AdvancedCapture] Stop error:", err);
+      return null;
+    });
     markRecordingStop();
 
     cameraRef.current.stopRecording();
@@ -890,7 +900,17 @@ export default function RecordScreen() {
                 <Text style={styles.timerText}>{formatTime(recordingTime)}</Text>
               </View>
             ) : (
-              <Text style={styles.topBarTitle} numberOfLines={1}>{questTitle || "Record"}</Text>
+              <View style={{ alignItems: "center" as const }}>
+                <Text style={styles.topBarTitle} numberOfLines={1}>{questTitle || "Record"}</Text>
+                <Text style={{
+                  color: useNativeCamera ? "#4ADE80" : "#FBBF24",
+                  fontSize: 10,
+                  fontFamily: "Inter_600SemiBold",
+                  letterSpacing: 0.5,
+                }}>
+                  {useNativeCamera ? "● ARKit" : "● Expo Camera"}
+                </Text>
+              </View>
             )}
 
             {useNativeCamera ? (

@@ -10,8 +10,10 @@ let NativeModule: any = null;
 if (Platform.OS === "ios") {
   try {
     NativeModule = requireNativeModule("ExpoKgenAdvancedCapture");
-  } catch {
+    console.log("[ExpoKgenAdvancedCapture] ✅ Native module loaded successfully");
+  } catch (e) {
     NativeModule = null;
+    console.warn("[ExpoKgenAdvancedCapture] ❌ Native module NOT found — will use legacy path.", e);
   }
 }
 
