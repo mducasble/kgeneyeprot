@@ -11,7 +11,7 @@ echo "╚═══════════════════════�
 echo ""
 
 # ─── Step 1: npm install ─────────────────────────────────────────────────────
-echo "==> [1/5] Installing npm packages + creating native module symlink..."
+echo "==> [1/6] Installing npm packages + creating native module symlink..."
 npm install
 echo ""
 
@@ -24,8 +24,22 @@ else
 fi
 echo ""
 
-# ─── Step 2: expo prebuild ───────────────────────────────────────────────────
-echo "==> [2/5] Generating ios/ directory (expo prebuild)..."
+# ─── Step 2: Check autolinking ──────────────────────────────────────────────
+echo "==> [2/6] Checking expo-modules-autolinking..."
+echo ""
+echo "    All autolinked modules for iOS:"
+npx expo-modules-autolinking resolve --platform ios 2>/dev/null | grep -i "name\|podName" || true
+echo ""
+echo "    Checking for ExpoKgenAdvancedCapture:"
+if npx expo-modules-autolinking resolve --platform ios 2>/dev/null | grep -qi "kgen"; then
+  echo "    ✅ Autolinking FOUND ExpoKgenAdvancedCapture"
+else
+  echo "    ⚠️  Autolinking did NOT find ExpoKgenAdvancedCapture — will patch manually"
+fi
+echo ""
+
+# ─── Step 3: expo prebuild ───────────────────────────────────────────────────
+echo "==> [3/6] Generating ios/ directory (expo prebuild)..."
 if [ -d "ios" ]; then
   echo "    ios/ directory already exists."
   read -p "    Regenerate from scratch? (y/N) " -n 1 -r
@@ -43,35 +57,45 @@ else
 fi
 echo ""
 
-# ─── Step 3: Ensure pod line + symlink in Podfile ────────────────────────────
-echo "==> [3/5] Adding ExpoKgenAdvancedCapture pod to Podfile..."
+# ─── Step 4: Ensure pod line + symlink in Podfile ────────────────────────────
+echo "==> [4/6] Adding ExpoKgenAdvancedCapture pod to Podfile..."
 node scripts/fix-ios-build.js
 echo ""
 
-# ─── Step 4: pod install ─────────────────────────────────────────────────────
-echo "==> [4/5] Running pod install..."
+# ─── Step 5: pod install ─────────────────────────────────────────────────────
+echo "==> [5/6] Running pod install..."
 cd ios
 pod install
 cd "$ROOT"
 echo ""
 
-# ─── Step 5: Patch ExpoModulesProvider.swift ─────────────────────────────────
-echo "==> [5/5] Patching ExpoModulesProvider.swift..."
+# ─── Step 6: Patch ExpoModulesProvider.swift ─────────────────────────────────
+echo "==> [6/6] Patching ExpoModulesProvider.swift..."
 node scripts/fix-ios-build.js --patch-provider
 echo ""
 
 # ─── Verify ──────────────────────────────────────────────────────────────────
+echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║  ✅ Setup complete!                                     ║"
 echo "║                                                         ║"
+echo "║  IMPORTANT: After Xcode build, verify the patch:        ║"
+echo "║                                                         ║"
+echo "║  grep ExpoKgen ios/Pods/Target\ Support\ Files/\        ║"
+echo "║    */ExpoModulesProvider*.swift                          ║"
+echo "║                                                         ║"
+echo "║  Also check for a SECOND provider file:                 ║"
+echo "║  find ios -name 'ExpoModulesProvider*' -type f          ║"
+echo "║                                                         ║"
 echo "║  Next steps:                                            ║"
 echo "║  1. Open ios/*.xcworkspace in Xcode                     ║"
-echo "║  2. Select your iPhone as the target device             ║"
-echo "║  3. ⌘⇧K (Clean Build Folder)                           ║"
-echo "║  4. ⌘R (Build & Run)                                   ║"
+echo "║  2. ⌘⇧K (Clean Build Folder)                           ║"
+echo "║  3. ⌘R (Build & Run)                                   ║"
+echo "║  4. Check Xcode console for:                            ║"
+echo "║     🟢 Registering module 'ExpoKgenAdvancedCapture'     ║"
 echo "║                                                         ║"
-echo "║  The Record screen should show ● ARKit (green).         ║"
-echo "║  If it shows ● Expo Camera with a red error,            ║"
-echo "║  send me the red error text from the Record screen.     ║"
+echo "║  If module STILL doesn't register, run this AFTER build:║"
+echo "║  find ios -name 'ExpoModulesProvider*' -type f          ║"
+echo "║  and share the output + contents of each file found.    ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
