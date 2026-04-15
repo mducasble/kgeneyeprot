@@ -1,0 +1,371 @@
+warning: (arm64) /Users/mducasble/Library/Developer/Xcode/DerivedData/KGeNDataCollector-gowpgtnyotqmzkexfkkcalcsglyn/Build/Products/Debug-iphoneos/KGeNDataCollector.app/KGeNDataCollector empty dSYM file detected, dSYM was created with an executable with no debug info.
+`UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+_setUpFeatureFlags called with release level 2
+🟢 Registering module 'ExpoModulesCoreJSLogger'
+🟢 Registering module 'ExpoFetchModule'
+🟢 Registering module 'ExpoAsset'
+🟢 Registering module 'ExpoAudio'
+🟢 Registering module 'ExpoVideoView'
+🟢 Registering module 'ExpoBlurView'
+🟢 Registering module 'ExpoCamera'
+🟢 Registering module 'ExponentConstants'
+nw_socket_handle_socket_event [C5:1] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C5 192.168.15.5:8097 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: en0[802.11], ipv4, ipv6, dns, uses wifi, LQM: good)] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C5] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x1073d01e0 Failed : error 0:61 [61]
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_connected_local_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+nw_connection_copy_connected_remote_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+🟢 Registering module 'ExpoCrypto'
+🟢 Registering module 'ExpoDevice'
+🟢 Registering module 'FileSystem'
+🟢 Registering module 'ExponentFileSystem'
+🟢 Registering module 'ExpoFontLoader'
+🟢 Registering module 'ExpoFontUtils'
+🟢 Registering module 'ExpoGlassEffect'
+🟢 Registering module 'ExpoHaptics'
+🟢 Registering module 'ExpoImage'
+🟢 Registering module 'ExponentImagePicker'
+🟢 Registering module 'ExpoKeepAwake'
+🟢 Registering module 'ExpoLinearGradient'
+🟢 Registering module 'ExpoLinking'
+🟢 Registering module 'ExpoLocation'
+🟢 Registering module 'ExpoHead'
+🟢 Registering module 'ExpoRouterNativeLinkPreview'
+🟢 Registering module 'ExpoScreenOrientation'
+🟢 Registering module 'ExpoSecureStore'
+🟢 Registering module 'ExponentAccelerometer'
+🟢 Registering module 'ExpoBarometer'
+🟢 Registering module 'ExponentDeviceMotion'
+🟢 Registering module 'ExponentGyroscope'
+🟢 Registering module 'ExponentMagnetometer'
+🟢 Registering module 'ExponentMagnetometerUncalibrated'
+🟢 Registering module 'ExponentPedometer'
+🟢 Registering module 'ExpoSplashScreen'
+🟢 Registering module 'SymbolModule'
+🟢 Registering module 'ExpoSystemUI'
+🟢 Registering module 'ExpoVideoThumbnails'
+🟢 Registering module 'ExpoWebBrowser'
+🟢 Creating JS object for module 'ExpoModulesCoreJSLogger'
+🟢 Creating JS object for module 'ExponentConstants'
+🟢 Creating JS object for module 'ExpoRouterNativeLinkPreview'
+Unbalanced calls start/end for tag 20
+Unbalanced calls start/end for tag 19
+Running "main" with {"rootTag":11,"initialProps":null,"fabric":true}
+🟢 Creating JS object for module 'ExpoBlurView'
+🟢 Creating JS object for module 'ExpoLinearGradient'
+🟢 Creating JS object for module 'ExpoSecureStore'
+🟢 Creating JS object for module 'ExpoFetchModule'
+🟢 Creating JS object for module 'ExpoGlassEffect'
+🟢 Creating JS object for module 'ExponentFileSystem'
+🟢 Creating JS object for module 'ExpoSplashScreen'
+🟢 Creating JS object for module 'ExpoCamera'
+🟢 Creating JS object for module 'ExpoAudio'
+🟢 Creating JS object for module 'ExponentDeviceMotion'
+🟢 Creating JS object for module 'ExpoVideoView'
+'[expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.', { [Stack] name: 'Stack' }
+🟢 Creating JS object for module 'ExpoDevice'
+🟢 Creating JS object for module 'ExpoLinking'
+🟢 Creating JS object for module 'ExpoKeepAwake'
+🟢 Creating JS object for module 'ExpoFontLoader'
+🟢 Creating JS object for module 'ExpoAsset'
+Could not create a sandbox extension for '/var/containers/Bundle/Application/5A0857E1-AEA0-4B22-B318-B6FDF1C7CF19/KGeNDataCollector.app'
+WebContent[3426] Unable to hide query parameters from script (missing data)
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0414 22:29:20.051360 1818472448 UIManagerBinding.cpp:135] instanceHandle is null, event of type topLayout will be dropped
+🟢 Creating JS object for module 'ExpoHaptics'
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+🟢 Creating JS object for module 'ExpoScreenOrientation'
+🟢 Creating JS object for module 'ExponentAccelerometer'
+{"msg":"#Warning Error reading file", "file":"\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist", "error":"Error Domain=NSCocoaErrorDomain Code=257 \"The file “com.apple.CoreMotion.plist” couldn’t be opened because you don’t have permission to view it.\" UserInfo={NSFilePath=\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist, NSURL=file:\/\/\/\/private\/var\/Managed%20Preferences\/mobile\/com.apple.CoreMotion.plist, NSUnderlyingError=0x12fb46a90 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}"}
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+[SYNC] Session created: mnzdhi5wju940xjop at 1776216571700
+[IMU] DeviceMotion capture started (target 100Hz, fallback check in 2000ms)
+[SYNC] IMU start: 1776216571710
+[SYNC] Video start: 1776216571711
+[AdvancedCapture] Not supported on this device — skipping
+<<<< FigCaptureSessionRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSessionRemote.m:910) - (err=-12784)
+[IMU] Stopped. Source: devicemotion, Samples: 1426, Duration: 14357ms, Hz: 99.3, Dropped (est): 10, AvgSync: 0.00ms, MaxSync: 0.00ms, WarmupDropped: 0, ZeroGyro: 0
+[SYNC] Recording stop: 1776216586078
+[IMU] Merged 3 batch files into file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/imu.jsonl
+[SESSION] Recording complete. Session: mnzdhi5wju940xjop, IMU samples: 1426, Hz: 99.3
+[RECORD] Video saved to session folder: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/video.mp4
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+🟢 Creating JS object for module 'ExpoVideoThumbnails'
+[MediaPipe] Extracted 15/15 frames for bridge analysis
+[MediaPipe] Bridge analysis done: 15 frames | hands=100% | faces=0%
+[SESSION] video_timestamps.jsonl written: 450 frames
+[SESSION] Semantic artifacts written (hand_landmarks, face_presence, frame_qc_metrics)
+[AdvancedCapture] camera_mount.json written: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/camera_mount.json
+[SESSION] qc_report.json written: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/qc_report.json
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/metadata.json
+[SESSION] session_manifest.json written: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/session_manifest.json (complete: true)
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/metadata.json
+'[SESSION] Data saved for recording 1776216586721kdbui42is:', 'mnzdhi5wju940xjop'
+[SESSION] All artifacts saved. QC: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/qc_report.json, Meta: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/metadata.json, Manifest: file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/session_manifest.json, IMU: 1426@99.3Hz, Timestamps: 450, Semantic: true
+⚠️ \^[[33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+I0414 22:29:53.369009 1818472448 UIManagerBinding.cpp:135] instanceHandle is null, event of type topLayout will be dropped
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/video.mp4 size=13143143 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+[UPLOAD] uploadAsync threw: Video upload timed out after 120s — check network or S3 configuration
+'[UPLOAD] Failed for 1776216586721kdbui42is:', 'Video upload timed out after 120s — check network or S3 configuration'
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzcuwjgbxved0ovv/video.mp4 size=8522518 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+[UPLOAD] uploadAsync result: status=200 body=
+'[UPLOAD] imu.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/imu.jsonl]
+'[UPLOAD] metadata.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/metadata.json]
+'[UPLOAD] qc_report.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/qc_report.json]
+'[UPLOAD] video_timestamps.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/video_timestamps.jsonl]
+'[UPLOAD] hand_landmarks.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/hand_landmarks.jsonl]
+'[UPLOAD] face_presence.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/face_presence.jsonl]
+'[UPLOAD] frame_qc_metrics.jsonl upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/frame_qc_metrics.jsonl]
+'[UPLOAD] session_manifest.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/session_manifest.json]
+'[UPLOAD] camera_mount.json upload failed (non-blocking):', [Error: Failed to get presigned URL for sessions/mnzcuwjgbxved0ovv/camera_mount.json]
+'[UPLOAD] Failed for 1776215527312q7x4xshs5:', 'Confirmation failed'
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+nw_socket_handle_socket_event [C20:1] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C20 192.168.15.5:8097 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: en0[802.11], ipv4, ipv6, dns, uses wifi, LQM: good)] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C20] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x13044bb60 Failed : error 0:61 [61]
+nw_connection_copy_protocol_metadata_internal_block_invoke [C20] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C20] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C20] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_connected_local_endpoint_block_invoke [C20] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+nw_connection_copy_connected_remote_endpoint_block_invoke [C20] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+W0414 22:34:20.416936 4191445504 Scheduler.cpp:142] Scheduler::~Scheduler() was called (address: 0x10712ee80).
+W0414 22:34:20.541621 1818472448 UIManagerBinding.cpp:59] UIManagerBinding::~UIManagerBinding() was called (address: 0x107284a98).
+W0414 22:34:20.543017 1818472448 UIManager.cpp:57] UIManager::~UIManager() was called (address: 0x1073cc318).
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+🟢 Registering module 'ExpoModulesCoreJSLogger'
+🟢 Registering module 'ExpoFetchModule'
+🟢 Registering module 'ExpoAsset'
+🟢 Registering module 'ExpoAudio'
+🟢 Registering module 'ExpoVideoView'
+🟢 Registering module 'ExpoBlurView'
+🟢 Registering module 'ExpoCamera'
+🟢 Registering module 'ExponentConstants'
+🟢 Registering module 'ExpoCrypto'
+🟢 Registering module 'ExpoDevice'
+nw_socket_handle_socket_event [C23:1] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C23 192.168.15.5:8097 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: en0[802.11], ipv4, ipv6, dns, uses wifi, LQM: good)] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C23] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x13044bc00 Failed : error 0:61 [61]
+nw_connection_copy_protocol_metadata_internal_block_invoke [C23] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C23] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C23] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_connected_local_endpoint_block_invoke [C23] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+nw_connection_copy_connected_remote_endpoint_block_invoke [C23] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+🟢 Registering module 'FileSystem'
+🟢 Registering module 'ExponentFileSystem'
+🟢 Registering module 'ExpoFontLoader'
+🟢 Registering module 'ExpoFontUtils'
+🟢 Registering module 'ExpoGlassEffect'
+🟢 Registering module 'ExpoHaptics'
+🟢 Registering module 'ExpoImage'
+🟢 Registering module 'ExponentImagePicker'
+🟢 Registering module 'ExpoKeepAwake'
+🟢 Registering module 'ExpoLinearGradient'
+🟢 Registering module 'ExpoLinking'
+🟢 Registering module 'ExpoLocation'
+🟢 Registering module 'ExpoHead'
+🟢 Registering module 'ExpoRouterNativeLinkPreview'
+🟢 Registering module 'ExpoScreenOrientation'
+🟢 Registering module 'ExpoSecureStore'
+🟢 Registering module 'ExponentAccelerometer'
+🟢 Registering module 'ExpoBarometer'
+🟢 Registering module 'ExponentDeviceMotion'
+🟢 Registering module 'ExponentGyroscope'
+🟢 Registering module 'ExponentMagnetometer'
+🟢 Registering module 'ExponentMagnetometerUncalibrated'
+🟢 Registering module 'ExponentPedometer'
+🟢 Registering module 'ExpoSplashScreen'
+🟢 Registering module 'SymbolModule'
+🟢 Registering module 'ExpoSystemUI'
+🟢 Registering module 'ExpoVideoThumbnails'
+🟢 Registering module 'ExpoWebBrowser'
+🟢 Creating JS object for module 'ExpoModulesCoreJSLogger'
+🟢 Creating JS object for module 'ExponentConstants'
+🟢 Creating JS object for module 'ExpoRouterNativeLinkPreview'
+Unbalanced calls start/end for tag 20
+Unbalanced calls start/end for tag 19
+Running "main" with {"rootTag":11,"initialProps":null,"fabric":true}
+🟢 Creating JS object for module 'ExpoBlurView'
+🟢 Creating JS object for module 'ExpoLinearGradient'
+🟢 Creating JS object for module 'ExpoSecureStore'
+🟢 Creating JS object for module 'ExpoFetchModule'
+🟢 Creating JS object for module 'ExpoGlassEffect'
+🟢 Creating JS object for module 'ExponentFileSystem'
+🟢 Creating JS object for module 'ExpoSplashScreen'
+🟢 Creating JS object for module 'ExpoCamera'
+🟢 Creating JS object for module 'ExpoAudio'
+🟢 Creating JS object for module 'ExponentDeviceMotion'
+🟢 Creating JS object for module 'ExpoVideoView'
+'[expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.', { [Stack] name: 'Stack' }
+🟢 Creating JS object for module 'ExpoDevice'
+🟢 Creating JS object for module 'ExpoLinking'
+🟢 Creating JS object for module 'ExpoKeepAwake'
+🟢 Creating JS object for module 'ExpoFontLoader'
+🟢 Creating JS object for module 'ExpoAsset'
+0x13d0ec1e0 - GPUProcessProxy::gpuProcessExited: reason=IdleExit
+0x13d0880c0 - [PID=0] WebProcessProxy::gpuProcessExited: reason=IdleExit
+🟢 Creating JS object for module 'ExpoHaptics'
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/video.mp4 size=13143143 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+Failed to terminate process: Error Domain=com.apple.extensionKit.errorDomain Code=18 "(null)" UserInfo={NSUnderlyingError=0x1260277b0 {Error Domain=RBSRequestErrorDomain Code=3 "No such process found" UserInfo={NSLocalizedFailureReason=No such process found}}}
+Failed to terminate process: Error Domain=com.apple.extensionKit.errorDomain Code=18 "(null)" UserInfo={NSUnderlyingError=0x13265c870 {Error Domain=RBSRequestErrorDomain Code=3 "No such process found" UserInfo={NSLocalizedFailureReason=No such process found}}}
+[UPLOAD] uploadAsync result: status=403 body=<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><AWSAccessKeyId>AKIA3RQQV5YOWMTTU26N</AWSAccessKeyId><RequestId>Q1DWBD9ZQ211HJNP</RequestId><HostId>wpOWGt7nBhuCZ20x9VWfzNC1WbegT8pLU+WLwIMbyvH/uFYcxD9k6kVs4aL3EyYkkxJuSYq4fhPzFwklV6sUzPw6Hkgo7iV2</HostId></Error>
+'[UPLOAD] Failed for 1776216586721kdbui42is:', 'Video upload failed (HTTP 403): <?xml version="1.0" encoding="UTF-8"?>\n<Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><AWSAccessKeyId>AKIA3RQQV5YOWMTTU26N</AWSAccessKeyId><RequestId>Q1DWBD9ZQ211HJNP</RequestId><HostId>wpOWGt7nBhuCZ20x9VWfzNC1WbegT8pLU+WLwIMbyvH/uFYcxD9k6kVs4aL3EyYkkxJuSYq4fhPzFwklV6sUzPw6Hkgo7iV2</HostId></Error>'
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+🟢 Posting 'appContextDestroys' event to registered modules
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+I0414 22:38:00.936470 1816178688 UIManagerBinding.cpp:135] instanceHandle is null, event of type topMomentumScrollEnd will be dropped
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzdhi5wju940xjop/video.mp4 size=13143143 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+[UPLOAD] uploadAsync result: status=403 body=<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><AWSAccessKeyId>AKIA3RQQV5YOWMTTU26N</AWSAccessKeyId><RequestId>FS1PMA9243Z7GFJ5</RequestId><HostId>h02xbyv2TY3zY0KCXmmmkVqqy2toXwbhyKyT80ErOY016J50In89f64ZCy0Yy/7NXmhyno5nczj15shSZaNlWrrGdIz+mDsi</HostId></Error>
+'[UPLOAD] Failed for 1776216586721kdbui42is:', 'Video upload failed (HTTP 403): <?xml version="1.0" encoding="UTF-8"?>\n<Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><AWSAccessKeyId>AKIA3RQQV5YOWMTTU26N</AWSAccessKeyId><RequestId>FS1PMA9243Z7GFJ5</RequestId><HostId>h02xbyv2TY3zY0KCXmmmkVqqy2toXwbhyKyT80ErOY016J50In89f64ZCy0Yy/7NXmhyno5nczj15shSZaNlWrrGdIz+mDsi</HostId></Error>'
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnzcuwjgbxved0ovv/video.mp4 size=8522518 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+🟢 Posting 'appEntersBackground' event to registered modules
+Snapshotting a view (0x126052800, UIKeyboardImpl) that is not in a visible window requires afterScreenUpdates:YES.
+[UPLOAD] uploadAsync threw: Video upload timed out after 120s — check network or S3 configuration
+'[UPLOAD] Failed for 1776215527312q7x4xshs5:', 'Video upload timed out after 120s — check network or S3 configuration'
+Unable to simultaneously satisfy constraints.
+	Probably at least one of the constraints in the following list is one you don't want. 
+	Try this: 
+		(1) look at each constraint and try to figure out which you don't expect; 
+		(2) find the code that added the unwanted constraint or constraints and fix it. 
+	(Note: If you're seeing NSAutoresizingMaskLayoutConstraints that you don't understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) 
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x12602dcc0 h=-&- v=-&- UITransitionView:0x1260e8a00.minY == 0   (active, names: '|':UIWindow:0x126050000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x12602de00 h=-&- v=-&- V:[UITransitionView:0x1260e8a00]-(0)-|   (active, names: '|':UIWindow:0x126050000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x12602d9a0 h=--- v=--- UIWindow:0x126050000.height == 0   (active)>",
+    "<NSLayoutConstraint:0x1262764e0 _UIKeyboardLayoutAlignmentView:0x1339bb800.bottom == UITransitionView:0x1260e8a00.bottom   (active)>",
+    "<NSLayoutConstraint:0x125f07750 _UIAlertControllerPhoneTVMacView:0x1339cd900.bottom <= UIView:0x116368380.bottom - 8   (active)>",
+    "<NSLayoutConstraint:0x125f06e40 V:|-(0)-[UIView:0x116368380]   (active, names: '|':UITransitionView:0x1260e8a00 )>",
+    "<NSLayoutConstraint:0x125f06710 UIView:0x116368380.bottom == _UIKeyboardLayoutAlignmentView:0x1339bb800.top   (active)>",
+    "<NSLayoutConstraint:0x125f04230 _UIAlertControllerPhoneTVMacView:0x1339cd900.top >= UIView:0x116368380.top + 62   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x125f07750 _UIAlertControllerPhoneTVMacView:0x1339cd900.bottom <= UIView:0x116368380.bottom - 8   (active)>
+
+Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in <UIKitCore/UIView.h> may also be helpful.
+Unable to simultaneously satisfy constraints.
+	Probably at least one of the constraints in the following list is one you don't want. 
+	Try this: 
+		(1) look at each constraint and try to figure out which you don't expect; 
+		(2) find the code that added the unwanted constraint or constraints and fix it. 
+	(Note: If you're seeing NSAutoresizingMaskLayoutConstraints that you don't understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) 
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x12602dcc0 h=-&- v=-&- UITransitionView:0x1260e8a00.minY == 0   (active, names: '|':UIWindow:0x126050000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x12602de00 h=-&- v=-&- V:[UITransitionView:0x1260e8a00]-(0)-|   (active, names: '|':UIWindow:0x126050000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x12602d9a0 h=--- v=--- UIWindow:0x126050000.height == 0   (active)>",
+    "<NSLayoutConstraint:0x1262764e0 _UIKeyboardLayoutAlignmentView:0x1339bb800.bottom == UITransitionView:0x1260e8a00.bottom   (active)>",
+    "<NSLayoutConstraint:0x125f076b0 _UIAlertControllerPhoneTVMacView:0x1339cd900.centerY == UILayoutGuide:0x1327f49a0'UIViewSafeAreaLayoutGuide'.centerY   (active)>",
+    "<NSLayoutConstraint:0x125f06e40 V:|-(0)-[UIView:0x116368380]   (active, names: '|':UITransitionView:0x1260e8a00 )>",
+    "<NSLayoutConstraint:0x125f06710 UIView:0x116368380.bottom == _UIKeyboardLayoutAlignmentView:0x1339bb800.top   (active)>",
+    "<NSLayoutConstraint:0x125f04230 _UIAlertControllerPhoneTVMacView:0x1339cd900.top >= UIView:0x116368380.top + 62   (active)>",
+    "<NSLayoutConstraint:0x125f06670 'UIViewSafeAreaLayoutGuide-bottom' V:[UILayoutGuide:0x1327f49a0'UIViewSafeAreaLayoutGuide']-(0)-|   (active, names: '|':UIView:0x116368380 )>",
+    "<NSLayoutConstraint:0x125f04050 'UIViewSafeAreaLayoutGuide-top' V:|-(62)-[UILayoutGuide:0x1327f49a0'UIViewSafeAreaLayoutGuide']   (active, names: '|':UIView:0x116368380 )>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x125f06670 'UIViewSafeAreaLayoutGuide-bottom' V:[UILayoutGuide:0x1327f49a0'UIViewSafeAreaLayoutGuide']-(0)-|   (active, names: '|':UIView:0x116368380 )>
+
+Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in <UIKitCore/UIView.h> may also be helpful.
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/972432A1-B9CC-47E4-9CBF-86DDF295DC25/Documents/sessions/mnza6dze2ph8xe1ku/video.mp4 size=14111904 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
+[UPLOAD] uploadAsync threw: Video upload timed out after 120s — check network or S3 configuration
+'[UPLOAD] Failed for 1776211031544isyhdmy0r:', 'Video upload timed out after 120s — check network or S3 configuration'
+Unable to simultaneously satisfy constraints.
+	Probably at least one of the constraints in the following list is one you don't want. 
+	Try this: 
+		(1) look at each constraint and try to figure out which you don't expect; 
+		(2) find the code that added the unwanted constraint or constraints and fix it. 
+	(Note: If you're seeing NSAutoresizingMaskLayoutConstraints that you don't understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) 
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x11638ce60 h=-&- v=-&- UITransitionView:0x12f8b0c00.minY == 0   (active, names: '|':UIWindow:0x126050400 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x11638f390 h=-&- v=-&- V:[UITransitionView:0x12f8b0c00]-(0)-|   (active, names: '|':UIWindow:0x126050400 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x11638f160 h=--- v=--- UIWindow:0x126050400.height == 0   (active)>",
+    "<NSLayoutConstraint:0x1163251d0 _UIKeyboardLayoutAlignmentView:0x12faaee00.bottom == UITransitionView:0x12f8b0c00.bottom   (active)>",
+    "<NSLayoutConstraint:0x12602c1e0 _UIAlertControllerPhoneTVMacView:0x1339ced00.centerY == UILayoutGuide:0x1338178e0'UIViewSafeAreaLayoutGuide'.centerY   (active)>",
+    "<NSLayoutConstraint:0x116327f70 V:|-(0)-[UIView:0x1170c6a00]   (active, names: '|':UITransitionView:0x12f8b0c00 )>",
+    "<NSLayoutConstraint:0x125f05220 UIView:0x1170c6a00.bottom == _UIKeyboardLayoutAlignmentView:0x12faaee00.top   (active)>",
+    "<NSLayoutConstraint:0x12602f070 _UIAlertControllerPhoneTVMacView:0x1339ced00.top >= UIView:0x1170c6a00.top + 62   (active)>",
+    "<NSLayoutConstraint:0x125f04320 'UIViewSafeAreaLayoutGuide-bottom' V:[UILayoutGuide:0x1338178e0'UIViewSafeAreaLayoutGuide']-(0)-|   (active, names: '|':UIView:0x1170c6a00 )>",
+    "<NSLayoutConstraint:0x125f06ee0 'UIViewSafeAreaLayoutGuide-top' V:|-(62)-[UILayoutGuide:0x1338178e0'UIViewSafeAreaLayoutGuide']   (active, names: '|':UIView:0x1170c6a00 )>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x125f04320 'UIViewSafeAreaLayoutGuide-bottom' V:[UILayoutGuide:0x1338178e0'UIViewSafeAreaLayoutGuide']-(0)-|   (active, names: '|':UIView:0x1170c6a00 )>
+
+Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in <UIKitCore/UIView.h> may also be helpful.
+Unable to simultaneously satisfy constraints.
+	Probably at least one of the constraints in the following list is one you don't want. 
+	Try this: 
+		(1) look at each constraint and try to figure out which you don't expect; 
+		(2) find the code that added the unwanted constraint or constraints and fix it. 
+	(Note: If you're seeing NSAutoresizingMaskLayoutConstraints that you don't understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) 
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x11638ce60 h=-&- v=-&- UITransitionView:0x12f8b0c00.minY == 0   (active, names: '|':UIWindow:0x126050400 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x11638f390 h=-&- v=-&- V:[UITransitionView:0x12f8b0c00]-(0)-|   (active, names: '|':UIWindow:0x126050400 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x11638f160 h=--- v=--- UIWindow:0x126050400.height == 0   (active)>",
+    "<NSLayoutConstraint:0x1163251d0 _UIKeyboardLayoutAlignmentView:0x12faaee00.bottom == UITransitionView:0x12f8b0c00.bottom   (active)>",
+    "<NSLayoutConstraint:0x116327f70 V:|-(0)-[UIView:0x1170c6a00]   (active, names: '|':UITransitionView:0x12f8b0c00 )>",
+    "<NSLayoutConstraint:0x125f05220 UIView:0x1170c6a00.bottom == _UIKeyboardLayoutAlignmentView:0x12faaee00.top   (active)>",
+    "<NSLayoutConstraint:0x12602f070 _UIAlertControllerPhoneTVMacView:0x1339ced00.top >= UIView:0x1170c6a00.top + 62   (active)>",
+    "<NSLayoutConstraint:0x12602f020 _UIAlertControllerPhoneTVMacView:0x1339ced00.bottom <= UIView:0x1170c6a00.bottom - 8   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x12602f020 _UIAlertControllerPhoneTVMacView:0x1339ced00.bottom <= UIView:0x1170c6a00.bottom - 8   (active)>
+
+Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in <UIKitCore/UIView.h> may also be helpful.
