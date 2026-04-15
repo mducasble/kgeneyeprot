@@ -17,6 +17,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import {
   KGenCameraView,
   isNativeCameraAvailable,
+  getModuleLoadError,
 } from "@/modules/expo-kgen-advanced-capture/src/index";
 import {
   startNativeCameraCapture,
@@ -914,6 +915,18 @@ export default function RecordScreen() {
                       ? "● Web Camera"
                       : "● Expo Camera"}
                 </Text>
+                {!useNativeCamera && Platform.OS === "ios" && getModuleLoadError() && (
+                  <Text style={{
+                    color: "#EF4444",
+                    fontSize: 8,
+                    fontFamily: "Inter_400Regular",
+                    marginTop: 2,
+                    maxWidth: 200,
+                    textAlign: "center" as const,
+                  }}>
+                    {getModuleLoadError()}
+                  </Text>
+                )}
               </View>
             )}
 

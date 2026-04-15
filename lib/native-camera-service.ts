@@ -16,10 +16,11 @@ import {
   startNativeCapture as _startNativeCapture,
   stopNativeCapture as _stopNativeCapture,
   isNativeCameraAvailable,
+  getModuleLoadError,
 } from "../modules/expo-kgen-advanced-capture/src/index";
 import type { KGenNativeRecordingResult } from "../modules/expo-kgen-advanced-capture/src/index";
 
-export { isNativeCameraAvailable };
+export { isNativeCameraAvailable, getModuleLoadError };
 export type { KGenNativeRecordingResult };
 
 export interface NativeCaptureSession {

@@ -157,32 +157,61 @@ if (patchProvider) {
     process.exit(0);
   }
 
-  // Try .self, pattern (Expo SDK 50+ New Architecture)
-  const selfPattern = /^(\s+)(\w+\.self,)/m;
-  // Try instance pattern (older format)
-  const instancePattern = /^(\s+)(\w+\(\),)/m;
+  console.log("[ExpoKgen] Current provider file content:");
+  console.log("─".repeat(60));
+  console.log(content);
+  console.log("─".repeat(60));
 
-  const m1 = content.match(selfPattern);
-  const m2 = content.match(instancePattern);
+  let patched = null;
+
+  // Pattern 1: ModuleName.self, (with trailing comma — most entries)
+  const selfComma = /^(\s+)(\w+Module\.self,)/m;
+  // Pattern 2: ModuleName.self (last entry, no comma — before ] or ))
+  const selfNoComma = /^(\s+)(\w+Module\.self)\s*$/m;
+  // Pattern 3: ModuleName(), (instance with comma)
+  const instanceComma = /^(\s+)(\w+\(\),)/m;
+  // Pattern 4: Any .self, (non-Module suffix)
+  const anySelfComma = /^(\s+)(\w+\.self,)/m;
+  // Pattern 5: return [ ... ] — inject into the array
+  const returnArray = /^(\s*)(return\s*\[)\s*$/m;
+
+  const m1 = content.match(selfComma);
+  const m2 = content.match(selfNoComma);
+  const m3 = content.match(instanceComma);
+  const m4 = content.match(anySelfComma);
+  const m5 = content.match(returnArray);
 
   if (m1) {
     const indent = m1[1];
-    const patched = content.replace(selfPattern, `${indent}ExpoKgenAdvancedCaptureModule.self,\n${indent}${m1[2]}`);
-    fs.writeFileSync(providerPath, patched, "utf8");
-    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched — ExpoKgenAdvancedCaptureModule.self added");
-    console.log("[ExpoKgen]    Path:", providerPath);
-    console.log("[ExpoKgen]    → Clean Xcode build required: ⌘⇧K then ⌘R");
+    patched = content.replace(selfComma, `${indent}ExpoKgenAdvancedCaptureModule.self,\n${indent}${m1[2]}`);
+    console.log("[ExpoKgen] Matched pattern: ModuleName.self, (with comma)");
   } else if (m2) {
     const indent = m2[1];
-    const patched = content.replace(instancePattern, `${indent}ExpoKgenAdvancedCaptureModule(),\n${indent}${m2[2]}`);
+    patched = content.replace(selfNoComma, `${indent}ExpoKgenAdvancedCaptureModule.self,\n${indent}${m2[2]}`);
+    console.log("[ExpoKgen] Matched pattern: ModuleName.self (no comma, last entry)");
+  } else if (m3) {
+    const indent = m3[1];
+    patched = content.replace(instanceComma, `${indent}ExpoKgenAdvancedCaptureModule(),\n${indent}${m3[2]}`);
+    console.log("[ExpoKgen] Matched pattern: ModuleName(), (instance)");
+  } else if (m4) {
+    const indent = m4[1];
+    patched = content.replace(anySelfComma, `${indent}ExpoKgenAdvancedCaptureModule.self,\n${indent}${m4[2]}`);
+    console.log("[ExpoKgen] Matched pattern: AnyName.self, (generic)");
+  } else if (m5) {
+    const indent = m5[1];
+    patched = content.replace(returnArray, `${indent}${m5[2]}\n${indent}      ExpoKgenAdvancedCaptureModule.self,`);
+    console.log("[ExpoKgen] Matched pattern: return [ (injected after opening bracket)");
+  }
+
+  if (patched) {
     fs.writeFileSync(providerPath, patched, "utf8");
-    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched — ExpoKgenAdvancedCaptureModule() added");
+    console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched successfully");
     console.log("[ExpoKgen]    Path:", providerPath);
     console.log("[ExpoKgen]    → Clean Xcode build required: ⌘⇧K then ⌘R");
   } else {
-    console.log("[ExpoKgen] ⚠️ Could not auto-patch. First 800 chars of provider file:");
-    console.log(content.substring(0, 800));
+    console.log("[ExpoKgen] ⚠️ Could not auto-patch — no known pattern matched.");
     console.log("[ExpoKgen]    Path:", providerPath);
-    console.log("[ExpoKgen]    Add manually: ExpoKgenAdvancedCaptureModule.self (or ExpoKgenAdvancedCaptureModule())");
+    console.log("[ExpoKgen]    Please add manually: ExpoKgenAdvancedCaptureModule.self");
+    console.log("[ExpoKgen]    into the module array in the file above.");
   }
 }

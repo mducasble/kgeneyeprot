@@ -7,17 +7,26 @@ import type {
 } from "@/lib/advanced-capture-types";
 
 let NativeModule: any = null;
+let _moduleLoadError: string | null = null;
+
 if (Platform.OS === "ios") {
   try {
     NativeModule = requireNativeModule("ExpoKgenAdvancedCapture");
     console.log("[ExpoKgenAdvancedCapture] ✅ Native module loaded successfully");
-  } catch (e) {
+  } catch (e: any) {
     NativeModule = null;
-    console.warn("[ExpoKgenAdvancedCapture] ❌ Native module NOT found — will use legacy path.", e);
+    _moduleLoadError = String(e?.message ?? e);
+    console.warn("[ExpoKgenAdvancedCapture] ❌ Native module NOT found:", _moduleLoadError);
   }
+} else {
+  _moduleLoadError = `Platform is "${Platform.OS}", ARKit requires iOS native build`;
 }
 
 const MODULE_AVAILABLE = NativeModule != null;
+
+export function getModuleLoadError(): string | null {
+  return _moduleLoadError;
+}
 
 // ─── Legacy ARKit-only session API ─────────────────────────────────────────
 
