@@ -15,7 +15,6 @@ import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
 import {
-  KGenCameraView,
   isNativeCameraAvailable,
   getModuleLoadError,
 } from "@/modules/expo-kgen-advanced-capture/src/index";
@@ -868,10 +867,8 @@ export default function RecordScreen() {
     <OrientationGate required={REQUIRED_ORIENTATION}>
       <View style={[styles.container, { backgroundColor: "#000" }]}>
         <View style={styles.camera}>
-          {/* Camera background — native ARKit or expo-camera depending on availability */}
-          {useNativeCamera ? (
-            <KGenCameraView style={StyleSheet.absoluteFill} />
-          ) : (
+          {/* Camera preview — always expo-camera; unmounted during ARKit native recording */}
+          {!(useNativeCamera && isRecording) ? (
             <CameraView
               ref={cameraRef}
               style={StyleSheet.absoluteFill}
@@ -879,6 +876,13 @@ export default function RecordScreen() {
               mode="video"
               zoom={zoom}
             />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#111", justifyContent: "center", alignItems: "center" }]}>
+              <Ionicons name="videocam" size={48} color="#4ADE80" />
+              <Text style={{ color: "#fff", marginTop: 8, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+                ARKit Capture Active
+              </Text>
+            </View>
           )}
 
           {/* UI overlays */}
@@ -910,7 +914,7 @@ export default function RecordScreen() {
                   letterSpacing: 0.5,
                 }}>
                   {useNativeCamera
-                    ? "● ARKit"
+                    ? "● ARKit Ready"
                     : Platform.OS === "web"
                       ? "● Web Camera"
                       : "● Expo Camera"}
@@ -930,7 +934,7 @@ export default function RecordScreen() {
               </View>
             )}
 
-            {useNativeCamera ? (
+            {isRecording ? (
               <View style={styles.topBtn} />
             ) : (
               <Pressable
@@ -942,7 +946,7 @@ export default function RecordScreen() {
             )}
           </View>
 
-          <AlertBorder alertState={useNativeCamera ? "none" : alertState} />
+          <AlertBorder alertState={(useNativeCamera && isRecording) ? "none" : alertState} />
 
           {!isRecording && (
             <View style={styles.precaptureGuide}>

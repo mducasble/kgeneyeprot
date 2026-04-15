@@ -129,9 +129,9 @@ export function isNativeCameraAvailable(): boolean {
 }
 
 // ─── Native Camera Preview View ─────────────────────────────────────────────
+// View registration removed from module definition (incompatible with Fabric/New Architecture).
+// Falls back to expo-camera for preview. ARKit still captures video/IMU/head_pose/calibration.
 
 export const KGenCameraView: React.ComponentType<{
   style?: import("react-native").StyleProp<import("react-native").ViewStyle>;
-}> = MODULE_AVAILABLE
-  ? requireNativeViewManager("ExpoKgenAdvancedCapture")
-  : (() => null) as any;
+}> = (() => null) as any;
