@@ -1,13 +1,19 @@
-import { Platform, NativeModules } from "react-native";
-import { requireNativeViewManager } from "expo-modules-core";
+import { Platform } from "react-native";
+import { requireNativeModule, requireNativeViewManager } from "expo-modules-core";
 import type {
   AdvancedCaptureCapabilities,
   AdvancedSessionOptions,
   AdvancedSessionResult,
 } from "@/lib/advanced-capture-types";
 
-const NativeModule =
-  Platform.OS === "ios" ? (NativeModules.ExpoKgenAdvancedCapture ?? null) : null;
+let NativeModule: any = null;
+if (Platform.OS === "ios") {
+  try {
+    NativeModule = requireNativeModule("ExpoKgenAdvancedCapture");
+  } catch {
+    NativeModule = null;
+  }
+}
 
 const MODULE_AVAILABLE = NativeModule != null;
 

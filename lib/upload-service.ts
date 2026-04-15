@@ -221,7 +221,7 @@ async function tryUploadFile(
   }
 }
 
-const UPLOAD_TIMEOUT_MS = 120_000;
+const UPLOAD_TIMEOUT_MS = 300_000;
 
 async function uploadVideoNative(
   videoUri: string,
