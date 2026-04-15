@@ -211,7 +211,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", (req: Request, res: Response) => {
     const userId = authenticateRequest(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) {
+      const authHeader = req.headers.authorization;
+      console.warn(`[AUTH] /api/submissions 401 — header="${authHeader?.slice(0, 40) ?? "(missing)"}"`);
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const { questId, recordingId } = req.body;
     if (!questId || !recordingId) {
       return res.status(400).json({ message: "questId and recordingId are required" });

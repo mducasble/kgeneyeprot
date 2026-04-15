@@ -192,6 +192,24 @@ Built dynamically after all files are written. Only lists files that actually ex
 - **Mount config**: `mount-config/default-headband.json` — default forehead headband extrinsics (translation + Euler rotation)
 - **Requires**: `expo prebuild` on Mac → `pod install` → Xcode build for ARKit Swift compilation. Not functional in Expo Go or web.
 
+#### ARKit iOS Build Setup (run once on Mac after `git pull`)
+```bash
+# Option A — automated (recommended)
+chmod +x scripts/setup-ios.sh && ./scripts/setup-ios.sh
+
+# Option B — manual steps
+npm install                                      # creates relative symlink in node_modules/
+cd ios && pod install && cd ..                   # autolinking picks up ExpoKgenAdvancedCaptureModule
+node scripts/fix-ios-build.js --patch-provider  # safety patch if autolinking missed it
+# Then in Xcode: ⌘⇧K (clean) → ⌘R (run)
+```
+
+**How module registration works:**
+1. `npm install` runs `postinstall` → creates `node_modules/expo-kgen-advanced-capture` as a **relative** symlink (`../modules/expo-kgen-advanced-capture`) — portable across any absolute project path.
+2. `pod install` invokes Expo autolinking `resolve`. The resolver scans `node_modules/` including symlinks, finds the module config, includes `ExpoKgenAdvancedCaptureModule` in the `--packages` list, and regenerates `ExpoModulesProvider.swift` with the class registered.
+3. `fix-ios-build.js --patch-provider` searches `ios/Pods/Target Support Files/…/ExpoModulesProvider.swift` and injects `ExpoKgenAdvancedCaptureModule.self` if it was somehow omitted (no-op if already present).
+4. After a clean Xcode build the Record screen shows **● ARKit** (green) instead of ● Expo Camera.
+
 ### Known Limitations
 - IMU frequency depends on device hardware. Target is 100Hz; actual rate reported honestly in metadata.
 - `deviceModel` uses expo-device; falls back to "unknown" only as true last resort.

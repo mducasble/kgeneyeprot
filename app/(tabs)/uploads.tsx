@@ -8,6 +8,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import { fetch } from "expo/fetch";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
