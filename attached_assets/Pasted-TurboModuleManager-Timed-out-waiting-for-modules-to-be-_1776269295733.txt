@@ -1,0 +1,37 @@
+TurboModuleManager: Timed out waiting for modules to be invalidated
+
+-[RCTTurboModuleManager _invalidateModules]
+    RCTTurboModuleManager.mm:1102
+-[RCTTurboModuleManager invalidate]
+__25-[RCTInstance invalidate]_block_invoke
+decltype(std::declval<void () block_pointer __strong&>()()) std::__1::__invoke[abi:de180100]<void () block_pointer __strong&>(&&, decltype(std::declval<void () block_pointer __strong&>()())&&...)
+std::__1::__function::__func<void () block_pointer __strong, std::__1::allocator<std::__1::allocator>, void ()>::operator()()
+std::__1::__function::__value_func<void ()>::operator()[abi:de180100]() const
+std::__1::function<void ()>::operator()() const
+facebook::react::tryAndReturnError(std::__1::function<void ()> const&)
+-[RCTJSThreadManager _tryAndHandleError:]
+-[RCTJSThreadManager dispatchToJSThread:]::$_0::operator()() const
+decltype(std::declval<-[RCTJSThreadManager dispatchToJSThread:]::$_0&>()()) std::__1::__invoke[abi:de180100]<-[RCTJSThreadManager dispatchToJSThread:]::$_0&>(-[RCTJSThreadManager dispatchToJSThread:]::$_0&)
+void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:de180100]<-[RCTJSThreadManager dispatchToJSThread:]::$_0&>(-[RCTJSThreadManager dispatchToJSThread:]::$_0&)
+std::__1::__function::__alloc_func<-[RCTJSThreadManager dispatchToJSThread:]::$_0, std::__1::allocator<-[RCTJSThreadManager dispatchToJSThread:]::$_0>, void ()>::operator()[abi:de180100]()
+std::__1::__function::__func<-[RCTJSThreadManager dispatchToJSThread:]::$_0, std::__1::allocator<-[RCTJSThreadManager dispatchToJSThread:]::$_0>, void ()>::operator()()
+std::__1::__function::__value_func<void ()>::operator()[abi:de180100]() const
+std::__1::function<void ()>::operator()() const
+facebook::react::tryAndReturnError(std::__1::function<void ()> const&)
+facebook::react::RCTMessageThread::tryFunc(std::__1::function<void ()> const&)
+facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0::operator()() const
+decltype(std::declval<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&>()()) std::__1::__invoke[abi:de180100]<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&>(facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&)
+void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:de180100]<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&>(facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&)
+std::__1::__function::__alloc_func<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0, std::__1::allocator<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0>, void ()>::operator()[abi:de180100]()
+std::__1::__function::__func<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0, std::__1::allocator<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0>, void ()>::operator()()
+std::__1::__function::__value_func<void ()>::operator()[abi:de180100]() const
+std::__1::function<void ()>::operator()() const
+invocation function for block in facebook::react::RCTMessageThread::runAsync(std::__1::function<void ()>)
+2F32D384-4637-3018-843E-4FC875B865C4
+2F32D384-4637-3018-843E-4FC875B865C4
+2F32D384-4637-3018-843E-4FC875B865C4
+2F32D384-4637-3018-843E-4FC875B865C4
++[RCTJSThreadManager runRunLoop]
+42C593BB-89FB-3EC4-8220-C746811E7A43
+_pthread_start
+thread_start
