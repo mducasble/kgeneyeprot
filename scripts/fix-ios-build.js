@@ -25,3 +25,18 @@ fixFile(
   "guard fileSystemManager.getPathPermissions(path).contains(flag) else {",
   "guard (fileSystemManager as? EXFilePermissionModuleInterface)?.getPathPermissions(path).contains(flag) ?? true else {"
 );
+
+// Inject ExpoKgenAdvancedCapture pod into Podfile if not already present
+const podfilePath = path.join(__dirname, "..", "ios", "Podfile");
+const podLine = "  pod 'ExpoKgenAdvancedCapture', :path => '../modules/expo-kgen-advanced-capture'";
+const anchor = "use_expo_modules!";
+
+if (fs.existsSync(podfilePath)) {
+  const podfile = fs.readFileSync(podfilePath, "utf8");
+  if (!podfile.includes("ExpoKgenAdvancedCapture")) {
+    const patched = podfile.replace(anchor, `${anchor}\n${podLine}`);
+    fs.writeFileSync(podfilePath, patched, "utf8");
+    console.log("patched: ios/Podfile — added ExpoKgenAdvancedCapture pod");
+    console.log("Run 'cd ios && pod install' to complete the native module setup.");
+  }
+}

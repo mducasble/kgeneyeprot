@@ -1,0 +1,8 @@
+{
+  "name": "expo-kgen-advanced-capture",
+  "version": "1.0.0",
+  "description": "Native iOS advanced capture module for KGeN Data Collector",
+  "main": "src/index",
+  "types": "src/index",
+  "private": true
+}
