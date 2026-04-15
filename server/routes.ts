@@ -10,6 +10,7 @@ import {
   completeMultipartUpload,
   abortMultipartUpload,
   getObjectPresignedUrl,
+  listSessionObjects,
 } from "./s3-multipart";
 
 const SESSIONS_FILE = path.join(process.cwd(), ".data", "sessions.json");
@@ -309,6 +310,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const code = awsErr?.name ?? "UnknownError";
       const detail = awsErr?.message ?? "Failed to generate presigned URL";
       res.status(500).json({ message: `S3 error (${code}): ${detail}` });
+    }
+  });
+
+  app.get("/api/admin/s3-audit", async (_req: Request, res: Response) => {
+    try {
+      const objects = await listSessionObjects("sessions/");
+      const sessions: Record<string, { file: string; sizeMB: string; lastModified: string | undefined }[]> = {};
+      for (const obj of objects) {
+        const parts = obj.key.split("/");
+        const sid = parts[1];
+        const file = parts[2];
+        if (!sid || !file) continue;
+        if (!sessions[sid]) sessions[sid] = [];
+        sessions[sid].push({
+          file,
+          sizeMB: (obj.size / 1024 / 1024).toFixed(3),
+          lastModified: obj.lastModified?.toISOString(),
+        });
+      }
+      const REQUIRED = ["video.mp4","imu.jsonl","metadata.json","qc_report.json","video_timestamps.jsonl","hand_landmarks.jsonl","face_presence.jsonl","frame_qc_metrics.jsonl","session_manifest.json","camera_mount.json"];
+      const OPTIONAL = ["head_pose.jsonl","camera_calibration.json"];
+      const report = Object.entries(sessions).map(([sid, files]) => {
+        const names = files.map((f) => f.file);
+        return {
+          sessionId: sid,
+          fileCount: files.length,
+          files,
+          missingRequired: REQUIRED.filter((f) => !names.includes(f)),
+          missingOptional: OPTIONAL.filter((f) => !names.includes(f)),
+          complete: REQUIRED.every((f) => names.includes(f)),
+        };
+      });
+      res.json({ bucket: process.env.AWS_S3_BUCKET, totalSessions: report.length, sessions: report });
+    } catch (err: unknown) {
+      res.status(500).json({ error: String(err) });
     }
   });
 

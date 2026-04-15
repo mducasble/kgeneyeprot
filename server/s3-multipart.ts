@@ -5,6 +5,7 @@ import {
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
   PutObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -73,6 +74,18 @@ export async function abortMultipartUpload(
     UploadId: uploadId,
   });
   await s3.send(cmd);
+}
+
+export async function listSessionObjects(prefix = "sessions/"): Promise<
+  { key: string; size: number; lastModified: Date | undefined }[]
+> {
+  const cmd = new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix });
+  const result = await s3.send(cmd);
+  return (result.Contents ?? []).map((o) => ({
+    key: o.Key!,
+    size: o.Size ?? 0,
+    lastModified: o.LastModified,
+  }));
 }
 
 export async function getObjectPresignedUrl(
