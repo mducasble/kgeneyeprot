@@ -1,0 +1,139 @@
+warning: (arm64) /Users/mducasble/Library/Developer/Xcode/DerivedData/KGeNDataCollector-gowpgtnyotqmzkexfkkcalcsglyn/Build/Products/Debug-iphoneos/KGeNDataCollector.app/KGeNDataCollector empty dSYM file detected, dSYM was created with an executable with no debug info.
+`UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+_setUpFeatureFlags called with release level 2
+🟢 Registering module 'ExpoModulesCoreJSLogger'
+🟢 Registering module 'ExpoFetchModule'
+🟢 Registering module 'ExpoAsset'
+🟢 Registering module 'ExpoAudio'
+🟢 Registering module 'ExpoVideoView'
+🟢 Registering module 'ExpoBlurView'
+🟢 Registering module 'ExpoCamera'
+🟢 Registering module 'ExponentConstants'
+🟢 Registering module 'ExpoCrypto'
+🟢 Registering module 'ExpoDevice'
+🟢 Registering module 'FileSystem'
+🟢 Registering module 'ExponentFileSystem'
+🟢 Registering module 'ExpoFontLoader'
+🟢 Registering module 'ExpoFontUtils'
+🟢 Registering module 'ExpoGlassEffect'
+🟢 Registering module 'ExpoHaptics'
+🟢 Registering module 'ExpoImage'
+🟢 Registering module 'ExponentImagePicker'
+🟢 Registering module 'ExpoKeepAwake'
+🟢 Registering module 'ExpoLinearGradient'
+🟢 Registering module 'ExpoLinking'
+🟢 Registering module 'ExpoLocation'
+🟢 Registering module 'ExpoHead'
+🟢 Registering module 'ExpoRouterNativeLinkPreview'
+🟢 Registering module 'ExpoScreenOrientation'
+🟢 Registering module 'ExpoSecureStore'
+🟢 Registering module 'ExponentAccelerometer'
+🟢 Registering module 'ExpoBarometer'
+🟢 Registering module 'ExponentDeviceMotion'
+🟢 Registering module 'ExponentGyroscope'
+🟢 Registering module 'ExponentMagnetometer'
+🟢 Registering module 'ExponentMagnetometerUncalibrated'
+🟢 Registering module 'ExponentPedometer'
+🟢 Registering module 'ExpoSplashScreen'
+🟢 Registering module 'SymbolModule'
+🟢 Registering module 'ExpoSystemUI'
+🟢 Registering module 'ExpoVideoThumbnails'
+🟢 Registering module 'ExpoWebBrowser'
+🟢 Creating JS object for module 'ExpoModulesCoreJSLogger'
+🟢 Creating JS object for module 'ExponentConstants'
+🟢 Creating JS object for module 'ExpoRouterNativeLinkPreview'
+Unbalanced calls start/end for tag 20
+Unbalanced calls start/end for tag 19
+Running "main" with {"rootTag":11,"initialProps":null,"fabric":true}
+🟢 Creating JS object for module 'ExpoBlurView'
+🟢 Creating JS object for module 'ExpoLinearGradient'
+🟢 Creating JS object for module 'ExpoSecureStore'
+🟢 Creating JS object for module 'ExpoFetchModule'
+🟢 Creating JS object for module 'ExpoGlassEffect'
+🟢 Creating JS object for module 'ExponentFileSystem'
+🟢 Creating JS object for module 'ExpoSplashScreen'
+🟢 Creating JS object for module 'ExpoCamera'
+🟢 Creating JS object for module 'ExpoAudio'
+🟢 Creating JS object for module 'ExponentDeviceMotion'
+🟢 Creating JS object for module 'ExpoVideoView'
+'[expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.', { [Stack] name: 'Stack' }
+🟢 Creating JS object for module 'ExpoDevice'
+🟢 Creating JS object for module 'ExpoLinking'
+🟢 Creating JS object for module 'ExpoKeepAwake'
+🟢 Creating JS object for module 'ExpoFontLoader'
+🟢 Creating JS object for module 'ExpoAsset'
+nw_socket_handle_socket_event [C5:1] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C5 192.168.15.5:8097 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: en0[802.11], ipv4, ipv6, dns, uses wifi, LQM: good)] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C5] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x1467ec140 Failed : error 0:61 [61]
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+nw_connection_copy_connected_local_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+nw_connection_copy_connected_remote_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+Could not create a sandbox extension for '/var/containers/Bundle/Application/341829AC-720D-4800-8623-168BB0CFC570/KGeNDataCollector.app'
+WebContent[2872] Unable to hide query parameters from script (missing data)
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0414 21:33:15.979941 1808723968 UIManagerBinding.cpp:135] instanceHandle is null, event of type topMomentumScrollEnd will be dropped
+🟢 Creating JS object for module 'ExpoHaptics'
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+<<<< FigApplicationStateMonitor >>>> signalled err=-19431 at <>:474
+🟢 Creating JS object for module 'ExpoScreenOrientation'
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+🟢 Creating JS object for module 'ExponentAccelerometer'
+{"msg":"#Warning Error reading file", "file":"\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist", "error":"Error Domain=NSCocoaErrorDomain Code=257 \"The file “com.apple.CoreMotion.plist” couldn’t be opened because you don’t have permission to view it.\" UserInfo={NSFilePath=\/\/private\/var\/Managed Preferences\/mobile\/com.apple.CoreMotion.plist, NSURL=file:\/\/\/\/private\/var\/Managed%20Preferences\/mobile\/com.apple.CoreMotion.plist, NSUnderlyingError=0x155897510 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}"}
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+(Fig) signalled err=-12710 at <>:601
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+🟢 Posting 'appBecomesActive' event to registered modules
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+<<<< FigAudioSession(AV) >>>> signalled err=-19224 at <>:612
+[SYNC] Session created: mnzbhco3egdk6zzqu at 1776213205347
+[IMU] DeviceMotion capture started (target 100Hz, fallback check in 2000ms)
+[SYNC] IMU start: 1776213205357
+[SYNC] Video start: 1776213205358
+[AdvancedCapture] Not supported on this device — skipping
+<<<< FigCaptureSessionRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSessionRemote.m:910) - (err=-12784)
+[IMU] Stopped. Source: devicemotion, Samples: 1465, Duration: 14704ms, Hz: 99.6, Dropped (est): 5, AvgSync: 0.00ms, MaxSync: 0.00ms, WarmupDropped: 0, ZeroGyro: 0
+[SYNC] Recording stop: 1776213220069
+[IMU] Merged 3 batch files into file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/imu.jsonl
+[SESSION] Recording complete. Session: mnzbhco3egdk6zzqu, IMU samples: 1465, Hz: 99.6
+[RECORD] Video saved to session folder: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/video.mp4
+<<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
+<<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
+🟢 Creating JS object for module 'ExpoVideoThumbnails'
+[MediaPipe] Extracted 15/15 frames for bridge analysis
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+Tracking element window has a non-placeholder input view: (null)
+[MediaPipe] Bridge analysis done: 15 frames | hands=100% | faces=0%
+[SESSION] video_timestamps.jsonl written: 461 frames
+[SESSION] Semantic artifacts written (hand_landmarks, face_presence, frame_qc_metrics)
+[AdvancedCapture] camera_mount.json written: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/camera_mount.json
+[SESSION] qc_report.json written: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/qc_report.json
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/metadata.json
+[SESSION] session_manifest.json written: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/session_manifest.json (complete: true)
+[SESSION] metadata.json written: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/metadata.json
+'[SESSION] Data saved for recording 1776213220711ldd515vv2:', 'mnzbhco3egdk6zzqu'
+[SESSION] All artifacts saved. QC: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/qc_report.json, Meta: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/metadata.json, Manifest: file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/session_manifest.json, IMU: 1465@99.6Hz, Timestamps: 461, Semantic: true
+⚠️ \^[[33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+I0414 21:33:51.192087 1808723968 UIManagerBinding.cpp:135] instanceHandle is null, event of type topWillDisappear will be dropped
+[UPLOAD] native video: uri=file:///var/mobile/Containers/Data/Application/F60E85AF-E3C4-4920-A5A2-DAFB756D2594/Documents/sessions/mnzbhco3egdk6zzqu/video.mp4 size=13486622 bytes
+[UPLOAD] presigned URL obtained, starting uploadAsync…
