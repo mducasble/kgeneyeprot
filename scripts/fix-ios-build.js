@@ -204,14 +204,40 @@ if (patchProvider) {
   }
 
   if (patched) {
+    // Add "import ExpoKgenAdvancedCapture" if missing — without this import,
+    // the Swift compiler cannot resolve the ExpoKgenAdvancedCaptureModule class
+    if (!patched.includes("import ExpoKgenAdvancedCapture")) {
+      // Insert after the last existing import statement
+      const lastImportMatch = patched.match(/^(import\s+\w+)\s*$/gm);
+      if (lastImportMatch && lastImportMatch.length > 0) {
+        const lastImport = lastImportMatch[lastImportMatch.length - 1];
+        patched = patched.replace(lastImport, `${lastImport}\nimport ExpoKgenAdvancedCapture`);
+        console.log("[ExpoKgen] Added: import ExpoKgenAdvancedCapture");
+      } else {
+        // Fallback: add at the very top
+        patched = `import ExpoKgenAdvancedCapture\n${patched}`;
+        console.log("[ExpoKgen] Added: import ExpoKgenAdvancedCapture (at top)");
+      }
+    }
+
     fs.writeFileSync(providerPath, patched, "utf8");
     console.log("[ExpoKgen] ✅ ExpoModulesProvider.swift patched successfully");
     console.log("[ExpoKgen]    Path:", providerPath);
     console.log("[ExpoKgen]    → Clean Xcode build required: ⌘⇧K then ⌘R");
+
+    // Show the patched file for verification
+    console.log("[ExpoKgen] Patched file content:");
+    console.log("─".repeat(60));
+    console.log(fs.readFileSync(providerPath, "utf8"));
+    console.log("─".repeat(60));
   } else {
     console.log("[ExpoKgen] ⚠️ Could not auto-patch — no known pattern matched.");
     console.log("[ExpoKgen]    Path:", providerPath);
-    console.log("[ExpoKgen]    Please add manually: ExpoKgenAdvancedCaptureModule.self");
-    console.log("[ExpoKgen]    into the module array in the file above.");
+    console.log("");
+    console.log("[ExpoKgen]    Please edit the file manually:");
+    console.log("[ExpoKgen]    1. Add this line at the top with the other imports:");
+    console.log("[ExpoKgen]       import ExpoKgenAdvancedCapture");
+    console.log("[ExpoKgen]    2. Add this line inside the module array:");
+    console.log("[ExpoKgen]       ExpoKgenAdvancedCaptureModule.self,");
   }
 }
