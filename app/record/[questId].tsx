@@ -908,7 +908,11 @@ export default function RecordScreen() {
                   fontFamily: "Inter_600SemiBold",
                   letterSpacing: 0.5,
                 }}>
-                  {useNativeCamera ? "● ARKit" : "● Expo Camera"}
+                  {useNativeCamera
+                    ? "● ARKit"
+                    : Platform.OS === "web"
+                      ? "● Web Camera"
+                      : "● Expo Camera"}
                 </Text>
               </View>
             )}
